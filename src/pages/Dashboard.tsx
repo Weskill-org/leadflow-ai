@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Users, Brain, TrendingUp, DollarSign, Target, BarChart3
+import {
+  Users, Brain, TrendingUp, DollarSign, Target, BarChart3, Calendar
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
@@ -9,8 +9,12 @@ const stats = [
   { label: 'Daily Sales', value: '0', icon: Target, trend: '+0%' },
   { label: 'Revenue Today', value: '₹0', icon: DollarSign, trend: '+0%' },
   { label: 'Projected Revenue', value: '₹0', icon: TrendingUp, trend: '+0%' },
+  { label: 'Lifetime Payments', value: '₹0', icon: CreditCard, trend: '+0%' },
   { label: 'Total Revenue', value: '₹0', icon: BarChart3, trend: '+0%' },
+  { label: 'Revenue Forecast', value: '₹0', icon: Brain, trend: '+0%' },
 ];
+
+import { CreditCard } from 'lucide-react';
 
 export default function Dashboard() {
   return (
@@ -30,7 +34,7 @@ export default function Dashboard() {
 
       <div className="p-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {stats.map((stat) => (
             <Card key={stat.label} className="glass">
               <CardContent className="p-6">

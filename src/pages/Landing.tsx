@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
-  Users, BarChart3, Phone, CreditCard, Workflow, 
-  Brain, ArrowRight, CheckCircle2, Zap, Target, TrendingUp
+  Users, Phone, CreditCard, Workflow, 
+  Brain, ArrowRight, Zap, Target, TrendingUp
 } from 'lucide-react';
 
 const features = [
@@ -62,7 +62,7 @@ export default function Landing() {
             </Link>
             <Link to="/auth?mode=signup">
               <Button size="sm" className="gradient-primary">
-                Get Started
+                Access CRM
               </Button>
             </Link>
           </div>
@@ -82,7 +82,7 @@ export default function Landing() {
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             AI CRM for{' '}
-            <span className="gradient-text">Leads → Calls → Payments</span>
+            <span className="gradient-text">Leads → Calls → Payments → Analytics</span>
           </h1>
           
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
@@ -93,13 +93,13 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <Link to="/auth?mode=signup">
               <Button size="lg" className="gradient-primary glow px-8 text-lg">
-                Start Free Trial
+                Access CRM
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
             <Link to="/auth">
               <Button size="lg" variant="outline" className="px-8 text-lg">
-                Access CRM
+                Login
               </Button>
             </Link>
           </div>

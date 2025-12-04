@@ -8,6 +8,16 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AllLeads from "./pages/AllLeads";
+import LGDashboard from "./pages/LGDashboard";
+import Interested from "./pages/Interested";
+import Paid from "./pages/Paid";
+import PendingPayments from "./pages/PendingPayments";
+import AutoDialer from "./pages/AutoDialer";
+import AIInsights from "./pages/AIInsights";
+import Team from "./pages/Team";
+import Automations from "./pages/Automations";
+import Integrations from "./pages/Integrations";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,7 +33,17 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/lg" element={<LGDashboard />} />
             <Route path="/dashboard/leads" element={<AllLeads />} />
+            <Route path="/dashboard/interested" element={<Interested />} />
+            <Route path="/dashboard/paid" element={<Paid />} />
+            <Route path="/dashboard/pending" element={<PendingPayments />} />
+            <Route path="/dashboard/dialer" element={<AutoDialer />} />
+            <Route path="/dashboard/ai" element={<AIInsights />} />
+            <Route path="/dashboard/team" element={<Team />} />
+            <Route path="/dashboard/automations" element={<Automations />} />
+            <Route path="/dashboard/integrations" element={<Integrations />} />
+            <Route path="/dashboard/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
