@@ -37,6 +37,7 @@ export default function Team() {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteFullName, setInviteFullName] = useState('');
     const [invitePassword, setInvitePassword] = useState('');
+    const [inviteRole, setInviteRole] = useState<AppRole>('ca');
     const [isInviting, setIsInviting] = useState(false);
 
     const assignableRoles = getAssignableRoles();
@@ -93,15 +94,24 @@ export default function Team() {
                     description: error.message,
                     variant: "destructive"
                 });
-            } else {
+            } else if (data.user) {
+                // Update the user's role if not the default 'ca'
+                if (inviteRole !== 'bde') {
+                    await supabase
+                        .from('user_roles')
+                        .update({ role: inviteRole })
+                        .eq('user_id', data.user.id);
+                }
+                
                 toast({
                     title: "Success",
-                    description: `Invitation sent to ${inviteEmail}. They will start at the lowest role level.`,
+                    description: `${inviteFullName} has been added as ${getRoleLabel(inviteRole)}.`,
                 });
                 setInviteDialogOpen(false);
                 setInviteEmail('');
                 setInviteFullName('');
                 setInvitePassword('');
+                setInviteRole('ca');
                 // Refetch team after a short delay to allow the trigger to create profile
                 setTimeout(() => refetch(), 1000);
             }
@@ -180,7 +190,7 @@ export default function Team() {
                             <DialogHeader>
                                 <DialogTitle>Invite New Team Member</DialogTitle>
                                 <DialogDescription>
-                                    New members will start at the lowest role level (CA) and can be promoted later.
+                                    Add a new member and assign their role in the organization.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 pt-4">
@@ -200,6 +210,24 @@ export default function Team() {
                                         value={inviteEmail}
                                         onChange={(e) => setInviteEmail(e.target.value)}
                                     />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Role / Position</label>
+                                    <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select role" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {assignableRoles.map(role => (
+                                                <SelectItem key={role} value={role}>
+                                                    {getRoleLabel(role)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        You can only assign roles below your level.
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium mb-2 block">Temporary Password</label>
