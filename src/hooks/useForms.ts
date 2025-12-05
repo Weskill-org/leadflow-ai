@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -18,74 +18,93 @@ export function useForms() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  const fetchForms = async () => {
-    if (!user) return;
+  const fetchForms = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     
-    const { data, error } = await supabase
-      .from('forms')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching forms:', error);
-    } else {
-      setForms(data as Form[]);
+    try {
+      const { data, error } = await supabase
+        .from('forms' as any)
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching forms:', error);
+      } else {
+        setForms((data as unknown as Form[]) || []);
+      }
+    } catch (err) {
+      console.error('Error fetching forms:', err);
     }
     setLoading(false);
-  };
+  }, [user]);
 
   const createForm = async (name: string, description?: string) => {
-    if (!user) return { error: new Error('Not authenticated') };
+    if (!user) return { error: new Error('Not authenticated'), data: null };
     
-    const { data, error } = await supabase
-      .from('forms')
-      .insert({
-        name,
-        description,
-        created_by_id: user.id,
-        status: 'active'
-      })
-      .select()
-      .single();
-    
-    if (!error && data) {
-      setForms(prev => [data as Form, ...prev]);
+    try {
+      const { data, error } = await supabase
+        .from('forms' as any)
+        .insert({
+          name,
+          description,
+          created_by_id: user.id,
+          status: 'active'
+        })
+        .select()
+        .single();
+      
+      if (!error && data) {
+        setForms(prev => [(data as unknown as Form), ...prev]);
+      }
+      
+      return { data, error };
+    } catch (err) {
+      return { data: null, error: err as Error };
     }
-    
-    return { data, error };
   };
 
   const updateForm = async (id: string, updates: Partial<Form>) => {
-    const { data, error } = await supabase
-      .from('forms')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (!error && data) {
-      setForms(prev => prev.map(f => f.id === id ? data as Form : f));
+    try {
+      const { data, error } = await supabase
+        .from('forms' as any)
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (!error && data) {
+        setForms(prev => prev.map(f => f.id === id ? (data as unknown as Form) : f));
+      }
+      
+      return { data, error };
+    } catch (err) {
+      return { data: null, error: err as Error };
     }
-    
-    return { data, error };
   };
 
   const deleteForm = async (id: string) => {
-    const { error } = await supabase
-      .from('forms')
-      .delete()
-      .eq('id', id);
-    
-    if (!error) {
-      setForms(prev => prev.filter(f => f.id !== id));
+    try {
+      const { error } = await supabase
+        .from('forms' as any)
+        .delete()
+        .eq('id', id);
+      
+      if (!error) {
+        setForms(prev => prev.filter(f => f.id !== id));
+      }
+      
+      return { error };
+    } catch (err) {
+      return { error: err as Error };
     }
-    
-    return { error };
   };
 
   useEffect(() => {
     fetchForms();
-  }, [user]);
+  }, [fetchForms]);
 
   return { forms, loading, createForm, updateForm, deleteForm, refetch: fetchForms };
 }

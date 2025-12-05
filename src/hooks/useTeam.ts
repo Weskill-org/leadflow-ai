@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { Constants } from '@/integrations/supabase/types';
@@ -56,64 +56,71 @@ export function useTeam() {
   const [currentUserRole, setCurrentUserRole] = useState<AppRole | null>(null);
   const { user } = useAuth();
 
-  const fetchTeam = async () => {
-    if (!user) return;
-
-    // Get current user's role
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
-    
-    if (roleData) {
-      setCurrentUserRole(roleData.role as AppRole);
-    }
-
-    // Fetch profiles with roles
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching team:', error);
+  const fetchTeam = useCallback(async () => {
+    if (!user) {
       setLoading(false);
       return;
     }
 
-    // Fetch roles and manager info for each profile
-    const membersWithRoles = await Promise.all(
-      (profiles || []).map(async (profile) => {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', profile.id)
-          .single();
-        
-        let manager = undefined;
-        if (profile.manager_id) {
-          const { data: managerData } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .eq('id', profile.manager_id)
-            .single();
-          if (managerData) {
-            manager = managerData;
-          }
-        }
-        
-        return {
-          ...profile,
-          role: (roleData?.role as AppRole) || 'bde',
-          manager,
-        };
-      })
-    );
+    try {
+      // Get current user's role
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (roleData) {
+        setCurrentUserRole(roleData.role as AppRole);
+      }
 
-    setMembers(membersWithRoles as TeamMember[]);
+      // Fetch profiles
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching team:', error);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch roles and manager info for each profile
+      const membersWithRoles = await Promise.all(
+        (profiles || []).map(async (profile) => {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', profile.id)
+            .single();
+          
+          let manager = undefined;
+          if (profile.manager_id) {
+            const { data: managerData } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .eq('id', profile.manager_id)
+              .single();
+            if (managerData) {
+              manager = managerData;
+            }
+          }
+          
+          return {
+            ...profile,
+            role: (roleData?.role as AppRole) || 'bde',
+            manager,
+          };
+        })
+      );
+
+      setMembers(membersWithRoles as TeamMember[]);
+    } catch (err) {
+      console.error('Error fetching team:', err);
+    }
     setLoading(false);
-  };
+  }, [user]);
 
   const promoteUser = async (targetUserId: string, newRole: AppRole) => {
     if (!user || !currentUserRole) {
@@ -167,7 +174,7 @@ export function useTeam() {
 
   useEffect(() => {
     fetchTeam();
-  }, [user]);
+  }, [fetchTeam]);
 
   return { 
     members, 
