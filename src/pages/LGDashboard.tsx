@@ -4,30 +4,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Link2, Copy, Plus } from 'lucide-react';
+import { Link2, Copy, Plus, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useForms } from '@/hooks/useForms';
+import { useLGLinks } from '@/hooks/useLGLinks';
 
 export default function LGDashboard() {
     const [caName, setCaName] = useState('');
     const [selectedForm, setSelectedForm] = useState('');
+    const [utmCampaign, setUtmCampaign] = useState('');
+    const [isCreating, setIsCreating] = useState(false);
     const { toast } = useToast();
+    
+    const { forms, loading: formsLoading } = useForms();
+    const { links, loading: linksLoading, createLink } = useLGLinks();
 
-    // Mock forms
-    const forms = [
-        { id: '1', name: 'General Inquiry Form' },
-        { id: '2', name: 'Webinar Registration' },
-        { id: '3', name: 'Campus Ambassador Application' },
-    ];
+    const activeForms = forms.filter(f => f.status === 'active');
 
-    // Mock data for reporting
-    const links = [
-        { id: 1, caName: 'Rahul Kumar', form: 'General Inquiry', url: 'https://leadcubed.in/form/1?utm_source=Rahul%20Kumar', leads: 45, interested: 12, paid: 5, revenue: '₹25,000', projected: '₹60,000' },
-        { id: 2, caName: 'Priya Singh', form: 'Webinar Reg', url: 'https://leadcubed.in/form/2?utm_source=Priya%20Singh', leads: 32, interested: 8, paid: 3, revenue: '₹15,000', projected: '₹40,000' },
-        { id: 3, caName: 'Amit Patel', form: 'CA Application', url: 'https://leadcubed.in/form/3?utm_source=Amit%20Patel', leads: 28, interested: 15, paid: 8, revenue: '₹40,000', projected: '₹75,000' },
-    ];
-
-    const handleCreateLink = () => {
+    const handleCreateLink = async () => {
         if (!caName || !selectedForm) {
             toast({
                 title: "Missing Information",
@@ -37,19 +32,49 @@ export default function LGDashboard() {
             return;
         }
 
-        const generatedLink = `https://leadcubed.in/form/${selectedForm}?utm_source=${encodeURIComponent(caName)}`;
+        setIsCreating(true);
+        const { data, error } = await createLink(selectedForm, caName, utmCampaign || undefined);
+        setIsCreating(false);
 
+        if (error) {
+            toast({
+                title: "Error",
+                description: "Failed to create link. Please try again.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        const utmSource = caName.toLowerCase().replace(/\s+/g, '_');
+        const baseUrl = `${window.location.origin}/form/${selectedForm}`;
+        const params = new URLSearchParams({
+            utm_source: utmSource,
+            utm_medium: 'referral',
+            ...(utmCampaign && { utm_campaign: utmCampaign }),
+            link_id: data?.id || ''
+        });
+        const generatedLink = `${baseUrl}?${params.toString()}`;
+
+        navigator.clipboard.writeText(generatedLink);
         toast({
-            title: "Link Created",
-            description: `Link generated: ${generatedLink}`,
+            title: "Link Created & Copied!",
+            description: "The link has been generated and copied to your clipboard.",
         });
 
-        // In a real app, we would save this link to the database
         setCaName('');
         setSelectedForm('');
+        setUtmCampaign('');
     };
 
-    const copyLink = (url: string) => {
+    const copyLink = (link: typeof links[0]) => {
+        const baseUrl = `${window.location.origin}/form/${link.form_id}`;
+        const params = new URLSearchParams({
+            utm_source: link.utm_source,
+            utm_medium: link.utm_medium || 'referral',
+            ...(link.utm_campaign && { utm_campaign: link.utm_campaign }),
+            link_id: link.id
+        });
+        const url = `${baseUrl}?${params.toString()}`;
         navigator.clipboard.writeText(url);
         toast({
             title: "Copied",
@@ -57,12 +82,20 @@ export default function LGDashboard() {
         });
     };
 
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            maximumFractionDigits: 0
+        }).format(amount);
+    };
+
     return (
         <DashboardLayout>
             <div className="p-8 space-y-8">
                 <div>
                     <h1 className="text-2xl font-bold mb-2">Lead Generation Dashboard</h1>
-                    <p className="text-muted-foreground">Manage public form links and track performance.</p>
+                    <p className="text-muted-foreground">Create UTM-tracked links and monitor performance.</p>
                 </div>
 
                 {/* Create Link Section */}
@@ -70,36 +103,67 @@ export default function LGDashboard() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Link2 className="h-5 w-5 text-primary" />
-                            Create Public Link
+                            Create Public Link with UTM Tracking
                         </CardTitle>
-                        <CardDescription>Generate a unique lead form link with UTM tracking.</CardDescription>
+                        <CardDescription>Generate a unique lead form link with UTM parameters for tracking.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-col md:flex-row gap-4 max-w-2xl">
-                            <div className="flex-1">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label className="text-sm text-muted-foreground mb-1 block">Select Form *</label>
                                 <Select value={selectedForm} onValueChange={setSelectedForm}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select Form" />
+                                        <SelectValue placeholder="Choose a form" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {forms.map(form => (
-                                            <SelectItem key={form.id} value={form.id}>{form.name}</SelectItem>
-                                        ))}
+                                        {formsLoading ? (
+                                            <SelectItem value="loading" disabled>Loading...</SelectItem>
+                                        ) : activeForms.length === 0 ? (
+                                            <SelectItem value="none" disabled>No active forms</SelectItem>
+                                        ) : (
+                                            activeForms.map(form => (
+                                                <SelectItem key={form.id} value={form.id}>{form.name}</SelectItem>
+                                            ))
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex-1">
+                            <div>
+                                <label className="text-sm text-muted-foreground mb-1 block">CA Name (utm_source) *</label>
                                 <Input
-                                    placeholder="Enter CA Name (Source)"
+                                    placeholder="e.g., Rahul Kumar"
                                     value={caName}
                                     onChange={(e) => setCaName(e.target.value)}
                                 />
                             </div>
-                            <Button onClick={handleCreateLink} className="gradient-primary">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Generate Link
-                            </Button>
+                            <div>
+                                <label className="text-sm text-muted-foreground mb-1 block">Campaign (utm_campaign)</label>
+                                <Input
+                                    placeholder="e.g., summer_2024"
+                                    value={utmCampaign}
+                                    onChange={(e) => setUtmCampaign(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex items-end">
+                                <Button 
+                                    onClick={handleCreateLink} 
+                                    className="gradient-primary w-full"
+                                    disabled={isCreating}
+                                >
+                                    {isCreating ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <Plus className="h-4 w-4 mr-2" />
+                                    )}
+                                    Generate Link
+                                </Button>
+                            </div>
                         </div>
+                        <p className="text-xs text-muted-foreground mt-3">
+                            UTM parameters: utm_source={caName ? caName.toLowerCase().replace(/\s+/g, '_') : '[ca_name]'}, 
+                            utm_medium=referral
+                            {utmCampaign && `, utm_campaign=${utmCampaign}`}
+                        </p>
                     </CardContent>
                 </Card>
 
@@ -110,41 +174,61 @@ export default function LGDashboard() {
                         <CardDescription>Track leads and revenue generated by each link.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>CA Name</TableHead>
-                                    <TableHead>Form</TableHead>
-                                    <TableHead>Link URL</TableHead>
-                                    <TableHead className="text-right">Total Leads</TableHead>
-                                    <TableHead className="text-right">Interested</TableHead>
-                                    <TableHead className="text-right">Paid</TableHead>
-                                    <TableHead className="text-right">Revenue Received</TableHead>
-                                    <TableHead className="text-right">Revenue Projected</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {links.map((link) => (
-                                    <TableRow key={link.id}>
-                                        <TableCell className="font-medium">{link.caName}</TableCell>
-                                        <TableCell>{link.form}</TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-muted-foreground truncate max-w-[200px]">{link.url}</span>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyLink(link.url)}>
-                                                    <Copy className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">{link.leads}</TableCell>
-                                        <TableCell className="text-right">{link.interested}</TableCell>
-                                        <TableCell className="text-right">{link.paid}</TableCell>
-                                        <TableCell className="text-right text-success font-medium">{link.revenue}</TableCell>
-                                        <TableCell className="text-right text-muted-foreground">{link.projected}</TableCell>
+                        {linksLoading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : links.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                                No links created yet. Create your first link above.
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>CA Name</TableHead>
+                                        <TableHead>Form</TableHead>
+                                        <TableHead>UTM Source</TableHead>
+                                        <TableHead>Campaign</TableHead>
+                                        <TableHead className="text-right">Total Leads</TableHead>
+                                        <TableHead className="text-right">Interested</TableHead>
+                                        <TableHead className="text-right">Paid</TableHead>
+                                        <TableHead className="text-right">Revenue</TableHead>
+                                        <TableHead className="text-right">Projected</TableHead>
+                                        <TableHead></TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {links.map((link) => (
+                                        <TableRow key={link.id}>
+                                            <TableCell className="font-medium">{link.ca_name}</TableCell>
+                                            <TableCell>{link.form?.name || '-'}</TableCell>
+                                            <TableCell className="text-muted-foreground">{link.utm_source}</TableCell>
+                                            <TableCell className="text-muted-foreground">{link.utm_campaign || '-'}</TableCell>
+                                            <TableCell className="text-right">{link.lead_count || 0}</TableCell>
+                                            <TableCell className="text-right">{link.interested_count || 0}</TableCell>
+                                            <TableCell className="text-right">{link.paid_count || 0}</TableCell>
+                                            <TableCell className="text-right text-success font-medium">
+                                                {formatCurrency(link.revenue_received || 0)}
+                                            </TableCell>
+                                            <TableCell className="text-right text-muted-foreground">
+                                                {formatCurrency(link.revenue_projected || 0)}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8" 
+                                                    onClick={() => copyLink(link)}
+                                                >
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
                     </CardContent>
                 </Card>
             </div>

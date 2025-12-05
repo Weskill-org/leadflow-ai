@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      forms: {
+        Row: {
+          created_at: string
+          created_by_id: string
+          description: string | null
+          fields: Json
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_id: string
+          description?: string | null
+          fields?: Json
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_id?: string
+          description?: string | null
+          fields?: Json
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forms_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           batch_month: string | null
@@ -26,8 +67,10 @@ export type Database = {
           created_by_id: string
           domain: string | null
           email: string | null
+          form_id: string | null
           graduating_year: number | null
           id: string
+          lg_link_id: string | null
           name: string
           payment_link: string | null
           phone: string | null
@@ -42,6 +85,9 @@ export type Database = {
           status: Database["public"]["Enums"]["lead_status"]
           total_recovered: number | null
           updated_at: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
           whatsapp: string | null
         }
         Insert: {
@@ -55,8 +101,10 @@ export type Database = {
           created_by_id: string
           domain?: string | null
           email?: string | null
+          form_id?: string | null
           graduating_year?: number | null
           id?: string
+          lg_link_id?: string | null
           name: string
           payment_link?: string | null
           phone?: string | null
@@ -71,6 +119,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["lead_status"]
           total_recovered?: number | null
           updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           whatsapp?: string | null
         }
         Update: {
@@ -84,8 +135,10 @@ export type Database = {
           created_by_id?: string
           domain?: string | null
           email?: string | null
+          form_id?: string | null
           graduating_year?: number | null
           id?: string
+          lg_link_id?: string | null
           name?: string
           payment_link?: string | null
           phone?: string | null
@@ -100,6 +153,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["lead_status"]
           total_recovered?: number | null
           updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           whatsapp?: string | null
         }
         Relationships: [
@@ -108,6 +164,20 @@ export type Database = {
             columns: ["created_by_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_lg_link_id_fkey"
+            columns: ["lg_link_id"]
+            isOneToOne: false
+            referencedRelation: "lg_links"
             referencedColumns: ["id"]
           },
           {
@@ -129,6 +199,54 @@ export type Database = {
             columns: ["sales_owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lg_links: {
+        Row: {
+          ca_name: string
+          created_at: string
+          created_by_id: string
+          form_id: string
+          id: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string
+        }
+        Insert: {
+          ca_name: string
+          created_at?: string
+          created_by_id: string
+          form_id: string
+          id?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source: string
+        }
+        Update: {
+          ca_name?: string
+          created_at?: string
+          created_by_id?: string
+          form_id?: string
+          id?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lg_links_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lg_links_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
             referencedColumns: ["id"]
           },
         ]
@@ -197,6 +315,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_promote_user: {
+        Args: {
+          _new_role: Database["public"]["Enums"]["app_role"]
+          _promoter_id: string
+          _target_user_id: string
+        }
+        Returns: boolean
+      }
+      get_role_level: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: number
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
