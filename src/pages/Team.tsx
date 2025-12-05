@@ -37,7 +37,7 @@ export default function Team() {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteFullName, setInviteFullName] = useState('');
     const [invitePassword, setInvitePassword] = useState('');
-    const [inviteRole, setInviteRole] = useState<AppRole>('ca');
+    const [inviteRole, setInviteRole] = useState<AppRole>('bde');
     const [isInviting, setIsInviting] = useState(false);
 
     const assignableRoles = getAssignableRoles();
@@ -95,12 +95,21 @@ export default function Team() {
                     variant: "destructive"
                 });
             } else if (data.user) {
-                // Update the user's role if not the default 'ca'
+                // Update the user's role if not the default 'bde'
                 if (inviteRole !== 'bde') {
                     await supabase
                         .from('user_roles')
                         .update({ role: inviteRole })
                         .eq('user_id', data.user.id);
+                }
+                
+                // Auto-assign current user as manager for the new user
+                const { data: { user: currentUser } } = await supabase.auth.getUser();
+                if (currentUser) {
+                    await supabase
+                        .from('profiles')
+                        .update({ manager_id: currentUser.id })
+                        .eq('id', data.user.id);
                 }
                 
                 toast({
@@ -111,9 +120,9 @@ export default function Team() {
                 setInviteEmail('');
                 setInviteFullName('');
                 setInvitePassword('');
-                setInviteRole('ca');
+                setInviteRole('bde');
                 // Refetch team after a short delay to allow the trigger to create profile
-                setTimeout(() => refetch(), 1000);
+                setTimeout(() => refetch(), 1500);
             }
         } catch (err: any) {
             toast({
