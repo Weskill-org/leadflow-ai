@@ -3,9 +3,11 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail } from 'lucide-react';
 import { useTeam, AppRole } from '@/hooks/useTeam';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import {
     Dialog,
     DialogContent,
@@ -23,12 +25,19 @@ import {
 } from "@/components/ui/select";
 
 export default function Team() {
-    const { members, loading, currentUserRole, promoteUser, setManager, getRoleLabel, getAssignableRoles } = useTeam();
+    const { members, loading, currentUserRole, promoteUser, setManager, getRoleLabel, getAssignableRoles, refetch } = useTeam();
     const { toast } = useToast();
     const [selectedMember, setSelectedMember] = useState<string | null>(null);
     const [selectedRole, setSelectedRole] = useState<AppRole | ''>('');
     const [selectedManager, setSelectedManager] = useState<string>('');
     const [isPromoting, setIsPromoting] = useState(false);
+    
+    // Invite member state
+    const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteFullName, setInviteFullName] = useState('');
+    const [invitePassword, setInvitePassword] = useState('');
+    const [isInviting, setIsInviting] = useState(false);
 
     const assignableRoles = getAssignableRoles();
     
@@ -45,6 +54,67 @@ export default function Team() {
         };
         return levels[role] || 99;
     }
+
+    const handleInviteMember = async () => {
+        if (!inviteEmail || !inviteFullName || !invitePassword) {
+            toast({
+                title: "Error",
+                description: "Please fill in all fields.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        if (invitePassword.length < 6) {
+            toast({
+                title: "Error",
+                description: "Password must be at least 6 characters.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsInviting(true);
+        
+        try {
+            // Create user with Supabase auth
+            const { data, error } = await supabase.auth.signUp({
+                email: inviteEmail,
+                password: invitePassword,
+                options: {
+                    emailRedirectTo: `${window.location.origin}/`,
+                    data: { full_name: inviteFullName }
+                }
+            });
+
+            if (error) {
+                toast({
+                    title: "Error",
+                    description: error.message,
+                    variant: "destructive"
+                });
+            } else {
+                toast({
+                    title: "Success",
+                    description: `Invitation sent to ${inviteEmail}. They will start at the lowest role level.`,
+                });
+                setInviteDialogOpen(false);
+                setInviteEmail('');
+                setInviteFullName('');
+                setInvitePassword('');
+                // Refetch team after a short delay to allow the trigger to create profile
+                setTimeout(() => refetch(), 1000);
+            }
+        } catch (err: any) {
+            toast({
+                title: "Error",
+                description: err.message || "Failed to invite member.",
+                variant: "destructive"
+            });
+        }
+        
+        setIsInviting(false);
+    };
 
     const handlePromote = async () => {
         if (!selectedMember || !selectedRole) return;
@@ -99,10 +169,65 @@ export default function Team() {
                         <h1 className="text-2xl font-bold">Team Management</h1>
                         <p className="text-muted-foreground">Manage your organization hierarchy and roles.</p>
                     </div>
-                    <Button className="gradient-primary">
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Invite Member
-                    </Button>
+                    <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="gradient-primary">
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Invite Member
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Invite New Team Member</DialogTitle>
+                                <DialogDescription>
+                                    New members will start at the lowest role level (CA) and can be promoted later.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 pt-4">
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Full Name</label>
+                                    <Input
+                                        placeholder="Enter full name"
+                                        value={inviteFullName}
+                                        onChange={(e) => setInviteFullName(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Email</label>
+                                    <Input
+                                        type="email"
+                                        placeholder="Enter email address"
+                                        value={inviteEmail}
+                                        onChange={(e) => setInviteEmail(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Temporary Password</label>
+                                    <Input
+                                        type="password"
+                                        placeholder="Min 6 characters"
+                                        value={invitePassword}
+                                        onChange={(e) => setInvitePassword(e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Share this password with the new member to let them log in.
+                                    </p>
+                                </div>
+                                <Button 
+                                    className="w-full"
+                                    onClick={handleInviteMember}
+                                    disabled={isInviting}
+                                >
+                                    {isInviting ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <Mail className="h-4 w-4 mr-2" />
+                                    )}
+                                    Send Invitation
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 {loading ? (
