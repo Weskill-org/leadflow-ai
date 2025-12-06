@@ -197,9 +197,14 @@ export default function AllLeads() {
                             variant="outline"
                             size="sm"
                             className="h-8"
-                            onClick={() => {
-                              navigator.clipboard.writeText(lead.payment_link!);
-                              toast.success('Link copied to clipboard');
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(lead.payment_link!);
+                                toast.success('Link copied to clipboard');
+                              } catch (err) {
+                                console.error('Failed to copy:', err);
+                                toast.error('Failed to copy link');
+                              }
                             }}
                           >
                             Copy Link
