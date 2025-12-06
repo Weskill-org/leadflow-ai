@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Tables, Database } from '@/integrations/supabase/types';
+import { Tables, TablesInsert, Database } from '@/integrations/supabase/types';
 
 type Lead = Tables<'leads'>;
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -63,6 +63,66 @@ export function useLeads({ search, statusFilter }: UseLeadsOptions = {}) {
       }
 
       return data || [];
+    },
+  });
+}
+
+export function useUpdateLead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string } & Partial<Lead>) => {
+      const { data, error } = await supabase
+        .from('leads')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+  });
+}
+
+export function useCreateLead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (newLead: TablesInsert<'leads'>) => {
+      const { data, error } = await supabase
+        .from('leads')
+        .insert(newLead)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+  });
+}
+
+export function useCreateLeads() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (newLeads: TablesInsert<'leads'>[]) => {
+      const { data, error } = await supabase
+        .from('leads')
+        .insert(newLeads)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
     },
   });
 }

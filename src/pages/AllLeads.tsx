@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import {
-  Search, Filter, Download, Plus, MoreHorizontal, Phone, Mail
+  Search, Filter, MoreHorizontal, Phone, Mail
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -14,57 +14,94 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Mock data
-const leads = [
-  { id: 1, name: 'Aarav Sharma', email: 'aarav@example.com', phone: '+91 98765 43210', college: 'IIT Delhi', status: 'Interested', owner: 'Rahul Kumar', date: '2024-03-15' },
-  { id: 2, name: 'Sneha Gupta', email: 'sneha@example.com', phone: '+91 98765 43211', college: 'BITS Pilani', status: 'Paid', owner: 'Priya Singh', date: '2024-03-14' },
-  { id: 3, name: 'Rohan Verma', email: 'rohan@example.com', phone: '+91 98765 43212', college: 'VIT Vellore', status: 'Follow-up', owner: 'Amit Patel', date: '2024-03-14' },
-  { id: 4, name: 'Ishita Reddy', email: 'ishita@example.com', phone: '+91 98765 43213', college: 'SRM Chennai', status: 'New', owner: 'Rahul Kumar', date: '2024-03-13' },
-  { id: 5, name: 'Kabir Singh', email: 'kabir@example.com', phone: '+91 98765 43214', college: 'Manipal', status: 'DND', owner: 'Priya Singh', date: '2024-03-13' },
-];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useLeads, useUpdateLead } from '@/hooks/useLeads';
+import { usePrograms } from '@/hooks/usePrograms';
+import { useAuth } from '@/hooks/useAuth';
+import { Constants } from '@/integrations/supabase/types';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { AddLeadDialog } from '@/components/leads/AddLeadDialog';
+import { UploadLeadsDialog } from '@/components/leads/UploadLeadsDialog';
 
 const statusColors: Record<string, string> = {
-  'New': 'bg-blue-500/10 text-blue-500',
-  'Interested': 'bg-yellow-500/10 text-yellow-500',
-  'Paid': 'bg-green-500/10 text-green-500',
-  'Follow-up': 'bg-purple-500/10 text-purple-500',
-  'DND': 'bg-red-500/10 text-red-500',
+  'new': 'bg-blue-500/10 text-blue-500',
+  'interested': 'bg-yellow-500/10 text-yellow-500',
+  'paid': 'bg-green-500/10 text-green-500',
+  'follow_up': 'bg-purple-500/10 text-purple-500',
+  'dnd': 'bg-red-500/10 text-red-500',
+  'not_interested': 'bg-gray-500/10 text-gray-500',
+  'rnr': 'bg-orange-500/10 text-orange-500',
 };
 
 export default function AllLeads() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const { data: leads, isLoading } = useLeads({ search: searchQuery });
+  const { data: programs } = usePrograms();
+  const updateLead = useUpdateLead();
+  const { user } = useAuth();
+
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    try {
+      await updateLead.mutateAsync({
+        id: leadId,
+        status: newStatus as any
+      });
+      toast.success('Status updated successfully');
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handleProgramChange = async (leadId: string, newProgram: string) => {
+    try {
+      await updateLead.mutateAsync({
+        id: leadId,
+        product_purchased: newProgram
+      });
+      toast.success('Program updated successfully');
+    } catch (error) {
+      toast.error('Failed to update program');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
-      <div className="p-8 space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">All Leads</h1>
-            <p className="text-muted-foreground">Manage and track all your leads in one place.</p>
-          </div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">All Leads</h1>
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button className="gradient-primary">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Lead
-            </Button>
+            <UploadLeadsDialog />
+            <AddLeadDialog />
           </div>
         </div>
 
-        <Card className="glass">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search leads..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <Button variant="outline" size="icon">
@@ -77,52 +114,170 @@ export default function AllLeads() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone Number</TableHead>
                   <TableHead>College</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Owner</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Program</TableHead>
+                  <TableHead>Payment Link</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {leads.map((lead) => (
-                  <TableRow key={lead.id}>
-                    <TableCell className="font-medium">{lead.name}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col text-sm">
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Mail className="h-3 w-3" /> {lead.email}
-                        </span>
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Phone className="h-3 w-3" /> {lead.phone}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{lead.college}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={statusColors[lead.status] || 'bg-secondary'}>
-                        {lead.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{lead.owner}</TableCell>
-                    <TableCell className="text-muted-foreground">{lead.date}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Lead</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {leads?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      No leads found
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  leads?.map((lead) => (
+                    <TableRow key={lead.id}>
+                      <TableCell className="font-medium">{lead.name}</TableCell>
+                      <TableCell>
+                        {lead.email && (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Mail className="h-3 w-3" /> {lead.email}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {lead.phone && (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Phone className="h-3 w-3" /> {lead.phone}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>{lead.college || '-'}</TableCell>
+                      <TableCell>
+                        <Select
+                          defaultValue={lead.status}
+                          onValueChange={(value) => handleStatusChange(lead.id, value)}
+                        >
+                          <SelectTrigger className={`w-[140px] h-8 ${statusColors[lead.status] || 'bg-secondary'}`}>
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Constants.public.Enums.lead_status.map((status) => (
+                              <SelectItem key={status} value={status} className="capitalize">
+                                {status.replace('_', ' ')}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        {lead.sales_owner_id === user?.id ? 'You' : 'Unknown'}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(lead.created_at), 'MMM d, yyyy')}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          defaultValue={lead.product_purchased || undefined}
+                          onValueChange={(value) => handleProgramChange(lead.id, value)}
+                        >
+                          <SelectTrigger className="w-[140px] h-8">
+                            <SelectValue placeholder="Select Program" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {programs?.map((program) => (
+                              <SelectItem key={program.id} value={program.name}>
+                                {program.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        {lead.payment_link ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            onClick={() => {
+                              navigator.clipboard.writeText(lead.payment_link!);
+                              toast.success('Link copied to clipboard');
+                            }}
+                          >
+                            Copy Link
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            onClick={async () => {
+                              if (!lead.product_purchased) {
+                                toast.error('Please select a program first');
+                                return;
+                              }
+
+                              const selectedProgram = programs?.find(p => p.name === lead.product_purchased);
+
+                              if (!selectedProgram) {
+                                toast.error('Program details not found');
+                                return;
+                              }
+
+                              // Convert price to paise (assuming price in DB is in INR)
+                              const amount = selectedProgram.price * 100;
+
+                              try {
+                                toast.loading('Creating payment link...');
+                                const { data, error } = await supabase.functions.invoke('create-payment-link', {
+                                  body: {
+                                    amount,
+                                    description: `Payment for ${lead.product_purchased}`,
+                                    customer: {
+                                      name: lead.name,
+                                      email: lead.email || '',
+                                      phone: lead.phone || ''
+                                    },
+                                    reference_id: lead.id
+                                  }
+                                });
+
+                                if (error) throw error;
+                                if (data.error) throw new Error(data.error);
+
+                                await updateLead.mutateAsync({
+                                  id: lead.id,
+                                  payment_link: data.short_url
+                                });
+
+                                toast.dismiss();
+                                toast.success('Payment link created successfully');
+                              } catch (error: any) {
+                                toast.dismiss();
+                                console.error('Payment Link Error:', error);
+                                toast.error(error.message || 'Failed to create payment link');
+                              }
+                            }}
+                          >
+                            Create Link
+                          </Button>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>View Details</DropdownMenuItem>
+                            <DropdownMenuItem>Edit Lead</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
