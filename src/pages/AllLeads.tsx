@@ -25,6 +25,8 @@ import { useLeads, useUpdateLead } from '@/hooks/useLeads';
 import { usePrograms } from '@/hooks/usePrograms';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole, isRoleAllowedToMarkPaid } from '@/hooks/useUserRole';
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
+import { useQuery } from '@tanstack/react-query';
 import { Constants } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -43,7 +45,57 @@ const statusColors: Record<string, string> = {
 
 export default function AllLeads() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: leads, isLoading } = useLeads({ search: searchQuery });
+  const [selectedOwners, setSelectedOwners] = useState<Set<string>>(new Set());
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
+  const [selectedColleges, setSelectedColleges] = useState<Set<string>>(new Set());
+  const [selectedPrograms, setSelectedPrograms] = useState<Set<string>>(new Set());
+
+  // Fetch filter options
+  const { data: filterOptions } = useQuery({
+    queryKey: ['leadsFilterOptions'],
+    queryFn: async () => {
+      const { data: owners } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .not('full_name', 'is', null);
+
+      // For colleges and programs, we might want to fetch distinct values from leads table
+      // or use the programs table for programs.
+      // Let's use programs table for programs.
+      const { data: programs } = await supabase.from('programs').select('name');
+
+      // For colleges, getting distinct values from leads table is a bit tricky with simple select.
+      // We can use a stored procedure or just fetch all leads (expensive) or use a separate query.
+      // Supabase doesn't support .distinct() directly on a column easily without rpc.
+      // For now, let's fetch all leads strictly for the purpose of extracting unique colleges? 
+      // No, that's bad for scaling.
+      // Let's try to use a .rpc if we had one, but we don't.
+      // Alternative: Fetch distinct colleges using a workaround or just mock it for now?
+      // Or: "select college from leads" and process in JS (still heavy if many leads).
+      // Better: Create a Postgres function `get_unique_colleges`.
+      // For this iteration, I will fetch `select('college')` and unique it in JS. 
+      // It's not ideal for 1M rows but fine for < 10k.
+      const { data: leadsData } = await supabase.from('leads').select('college');
+      const uniqueColleges = Array.from(new Set(leadsData?.map(l => l.college).filter(Boolean)));
+
+      return {
+        owners: owners?.map(o => ({ label: o.full_name || 'Unknown', value: o.id })) || [],
+        programs: programs?.map(p => ({ label: p.name, value: p.name })) || [],
+        colleges: uniqueColleges.map(c => ({ label: c!, value: c! })) || [],
+        statuses: Constants.public.Enums.lead_status.map(s => ({ label: s.replace('_', ' '), value: s }))
+      };
+    }
+  });
+
+  const { data: leads, isLoading } = useLeads({
+    search: searchQuery,
+    filters: {
+      owners: Array.from(selectedOwners),
+      statuses: Array.from(selectedStatuses),
+      colleges: Array.from(selectedColleges),
+      programs: Array.from(selectedPrograms)
+    }
+  });
   const { data: programs } = usePrograms();
   const updateLead = useUpdateLead();
   const { user } = useAuth();
@@ -109,6 +161,54 @@ export default function AllLeads() {
               <Button variant="outline" size="icon">
                 <Filter className="h-4 w-4" />
               </Button>
+            </div>
+
+            {/* Advanced Filters */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {filterOptions && (
+                <>
+                  <MultiSelectFilter
+                    title="Owner"
+                    options={filterOptions.owners}
+                    selectedValues={selectedOwners}
+                    onSelectionChange={setSelectedOwners}
+                  />
+                  <MultiSelectFilter
+                    title="Status"
+                    options={filterOptions.statuses}
+                    selectedValues={selectedStatuses}
+                    onSelectionChange={setSelectedStatuses}
+                  />
+                  <MultiSelectFilter
+                    title="College"
+                    options={filterOptions.colleges}
+                    selectedValues={selectedColleges}
+                    onSelectionChange={setSelectedColleges}
+                  />
+                  <MultiSelectFilter
+                    title="Program"
+                    options={filterOptions.programs}
+                    selectedValues={selectedPrograms}
+                    onSelectionChange={setSelectedPrograms}
+                  />
+                  {(selectedOwners.size > 0 || selectedStatuses.size > 0 || selectedColleges.size > 0 || selectedPrograms.size > 0) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedOwners(new Set());
+                        setSelectedStatuses(new Set());
+                        setSelectedColleges(new Set());
+                        setSelectedPrograms(new Set());
+                      }}
+                      className="h-8 px-2 lg:px-3"
+                    >
+                      Reset
+                      <X className="ml-2 h-4 w-4" />
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
           </CardHeader>
           <CardContent>
