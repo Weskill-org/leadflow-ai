@@ -27,6 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole, isRoleAllowedToMarkPaid } from '@/hooks/useUserRole';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
 import { useQuery } from '@tanstack/react-query';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Constants } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -45,6 +46,7 @@ const statusColors: Record<string, string> = {
 
 export default function AllLeads() {
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [selectedOwners, setSelectedOwners] = useState<Set<string>>(new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
   const [selectedColleges, setSelectedColleges] = useState<Set<string>>(new Set());
@@ -88,7 +90,7 @@ export default function AllLeads() {
   });
 
   const { data: leads, isLoading } = useLeads({
-    search: searchQuery,
+    search: debouncedSearchQuery,
     filters: {
       owners: Array.from(selectedOwners),
       statuses: Array.from(selectedStatuses),

@@ -16,8 +16,8 @@ export default function LGDashboard() {
     const [utmCampaign, setUtmCampaign] = useState('');
     const [isCreating, setIsCreating] = useState(false);
     const { toast } = useToast();
-    
-    const { forms, loading: formsLoading } = useForms();
+
+    const { data: forms = [], isLoading: formsLoading } = useForms();
     const { links, loading: linksLoading, createLink } = useLGLinks();
 
     const activeForms = forms.filter(f => f.status === 'active');
@@ -145,8 +145,8 @@ export default function LGDashboard() {
                                 />
                             </div>
                             <div className="flex items-end">
-                                <Button 
-                                    onClick={handleCreateLink} 
+                                <Button
+                                    onClick={handleCreateLink}
                                     className="gradient-primary w-full"
                                     disabled={isCreating}
                                 >
@@ -160,7 +160,7 @@ export default function LGDashboard() {
                             </div>
                         </div>
                         <p className="text-xs text-muted-foreground mt-3">
-                            UTM parameters: utm_source={caName ? caName.toLowerCase().replace(/\s+/g, '_') : '[ca_name]'}, 
+                            UTM parameters: utm_source={caName ? caName.toLowerCase().replace(/\s+/g, '_') : '[ca_name]'},
                             utm_medium=referral
                             {utmCampaign && `, utm_campaign=${utmCampaign}`}
                         </p>
@@ -215,10 +215,10 @@ export default function LGDashboard() {
                                                 {formatCurrency(link.revenue_projected || 0)}
                                             </TableCell>
                                             <TableCell>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8" 
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8"
                                                     onClick={() => copyLink(link)}
                                                 >
                                                     <Copy className="h-4 w-4" />

@@ -1,6 +1,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -30,6 +31,7 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, loading, signOut } = useAuth();
+  const { data: role } = useUserRole();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -38,6 +40,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
+  const filteredNavItems = navItems.filter(item => {
+    if (item.label === 'Integrations') {
+      return role === 'company' || role === 'company_subadmin';
+    }
+    return true;
+  });
 
   if (loading) {
     return (
@@ -79,13 +88,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <button
               key={item.label}
               onClick={() => navigate(item.path)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
                 }`}
             >
               <item.icon className="h-4 w-4" />

@@ -68,6 +68,7 @@ export function useLeads({ search, statusFilter }: UseLeadsOptions = {}) {
 
       return data || [];
     },
+    placeholderData: (previousData) => previousData,
   });
 }
 

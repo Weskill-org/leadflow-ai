@@ -11,20 +11,25 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Mock data for forms
-const initialForms = [
-    { id: 1, name: 'General Inquiry Form', responses: 124, created: '2024-03-01', status: 'Active' },
-    { id: 2, name: 'Webinar Registration', responses: 85, created: '2024-03-10', status: 'Active' },
-    { id: 3, name: 'Campus Ambassador Application', responses: 42, created: '2024-03-15', status: 'Draft' },
-];
+import { useForms, useDeleteForm } from '@/hooks/useForms';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 export default function Forms() {
     const navigate = useNavigate();
-    const [forms, setForms] = useState(initialForms);
+    const { data: forms, isLoading } = useForms();
+    const deleteForm = useDeleteForm();
 
-    const handleDelete = (id: number) => {
-        setForms(forms.filter(f => f.id !== id));
+    const handleDelete = async (id: string) => {
+        if (confirm('Are you sure you want to delete this form?')) {
+            try {
+                await deleteForm.mutateAsync(id);
+                toast.success('Form deleted successfully');
+            } catch (error) {
+                toast.error('Failed to delete form');
+                console.error(error);
+            }
+        }
     };
 
     return (
@@ -58,44 +63,60 @@ export default function Forms() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {forms.map((form) => (
-                                    <TableRow key={form.id}>
-                                        <TableCell className="font-medium flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-primary" />
-                                            {form.name}
-                                        </TableCell>
-                                        <TableCell className="text-right">{form.responses}</TableCell>
-                                        <TableCell className="text-muted-foreground">{form.created}</TableCell>
-                                        <TableCell>
-                                            <span className={`px-2 py-1 rounded-full text-xs ${form.status === 'Active'
-                                                    ? 'bg-green-500/10 text-green-500'
-                                                    : 'bg-yellow-500/10 text-yellow-500'
-                                                }`}>
-                                                {form.status}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}`)}>
-                                                        <Edit className="h-4 w-4 mr-2" /> Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        <Eye className="h-4 w-4 mr-2" /> View Responses
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(form.id)}>
-                                                        <Trash className="h-4 w-4 mr-2" /> Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                {isLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center py-8">
+                                            Loading...
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                ) : forms?.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                            No forms found. Create one to get started.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    forms?.map((form) => (
+                                        <TableRow key={form.id}>
+                                            <TableCell className="font-medium flex items-center gap-2">
+                                                <FileText className="h-4 w-4 text-primary" />
+                                                {form.name}
+                                            </TableCell>
+                                            <TableCell className="text-right">0</TableCell> {/* Placeholder for responses count */}
+                                            <TableCell className="text-muted-foreground">
+                                                {format(new Date(form.created_at), 'MMM d, yyyy')}
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className={`px-2 py-1 rounded-full text-xs ${form.status === 'active'
+                                                    ? 'bg-green-500/10 text-green-500'
+                                                    : 'bg-yellow-500/10 text-yellow-500'
+                                                    }`}>
+                                                    {form.status || 'Draft'}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}`)}>
+                                                            <Edit className="h-4 w-4 mr-2" /> Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem>
+                                                            <Eye className="h-4 w-4 mr-2" /> View Responses
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(form.id)}>
+                                                            <Trash className="h-4 w-4 mr-2" /> Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>

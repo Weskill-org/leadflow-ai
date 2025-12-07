@@ -20,6 +20,7 @@ import Integrations from "./pages/Integrations";
 import Settings from "./pages/Settings";
 import Forms from "./pages/Forms";
 import FormBuilder from "./pages/FormBuilder";
+import PublicForm from "./pages/PublicForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/dashboard/forms" element={<Forms />} />
             <Route path="/dashboard/forms/new" element={<FormBuilder />} />
             <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
+            <Route path="/form/:id" element={<PublicForm />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

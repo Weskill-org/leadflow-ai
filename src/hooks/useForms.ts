@@ -1,110 +1,100 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
-export interface Form {
-  id: string;
-  name: string;
-  description: string | null;
-  fields: any[];
-  status: 'draft' | 'active' | 'archived';
-  created_by_id: string;
-  created_at: string;
-  updated_at: string;
-}
+export type Form = Tables<'forms'>;
+export type FormInsert = TablesInsert<'forms'>;
+export type FormUpdate = TablesUpdate<'forms'>;
 
 export function useForms() {
-  const [forms, setForms] = useState<Form[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-
-  const fetchForms = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    
-    try {
+  return useQuery({
+    queryKey: ['forms'],
+    queryFn: async () => {
       const { data, error } = await supabase
-        .from('forms' as any)
+        .from('forms')
         .select('*')
         .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching forms:', error);
-      } else {
-        setForms((data as unknown as Form[]) || []);
-      }
-    } catch (err) {
-      console.error('Error fetching forms:', err);
-    }
-    setLoading(false);
-  }, [user]);
 
-  const createForm = async (name: string, description?: string) => {
-    if (!user) return { error: new Error('Not authenticated'), data: null };
-    
-    try {
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useForm(id: string | undefined) {
+  return useQuery({
+    queryKey: ['form', id],
+    queryFn: async () => {
+      if (!id) return null;
       const { data, error } = await supabase
-        .from('forms' as any)
-        .insert({
-          name,
-          description,
-          created_by_id: user.id,
-          status: 'active'
-        })
+        .from('forms')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useCreateForm() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (newForm: FormInsert) => {
+      const { data, error } = await supabase
+        .from('forms')
+        .insert(newForm)
         .select()
         .single();
-      
-      if (!error && data) {
-        setForms(prev => [(data as unknown as Form), ...prev]);
-      }
-      
-      return { data, error };
-    } catch (err) {
-      return { data: null, error: err as Error };
-    }
-  };
 
-  const updateForm = async (id: string, updates: Partial<Form>) => {
-    try {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+    },
+  });
+}
+
+export function useUpdateForm() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string } & FormUpdate) => {
       const { data, error } = await supabase
-        .from('forms' as any)
+        .from('forms')
         .update(updates)
         .eq('id', id)
         .select()
         .single();
-      
-      if (!error && data) {
-        setForms(prev => prev.map(f => f.id === id ? (data as unknown as Form) : f));
-      }
-      
-      return { data, error };
-    } catch (err) {
-      return { data: null, error: err as Error };
-    }
-  };
 
-  const deleteForm = async (id: string) => {
-    try {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      queryClient.invalidateQueries({ queryKey: ['form', data.id] });
+    },
+  });
+}
+
+export function useDeleteForm() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('forms' as any)
+        .from('forms')
         .delete()
         .eq('id', id);
-      
-      if (!error) {
-        setForms(prev => prev.filter(f => f.id !== id));
-      }
-      
-      return { error };
-    } catch (err) {
-      return { error: err as Error };
-    }
-  };
 
-  useEffect(() => {
-    fetchForms();
-  }, [fetchForms]);
-
-  return { forms, loading, createForm, updateForm, deleteForm, refetch: fetchForms };
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+    },
+  });
 }

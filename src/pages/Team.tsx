@@ -31,7 +31,7 @@ export default function Team() {
     const [selectedRole, setSelectedRole] = useState<AppRole | ''>('');
     const [selectedManager, setSelectedManager] = useState<string>('');
     const [isPromoting, setIsPromoting] = useState(false);
-    
+
     // Invite member state
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
@@ -41,7 +41,7 @@ export default function Team() {
     const [isInviting, setIsInviting] = useState(false);
 
     const assignableRoles = getAssignableRoles();
-    
+
     // Users who can be managers (above the lowest level)
     const potentialManagers = members.filter(m => {
         const roleLevel = getRoleLevelNum(m.role);
@@ -76,7 +76,7 @@ export default function Team() {
         }
 
         setIsInviting(true);
-        
+
         try {
             // Create user with Supabase auth
             const { data, error } = await supabase.auth.signUp({
@@ -102,7 +102,7 @@ export default function Team() {
                         .update({ role: inviteRole })
                         .eq('user_id', data.user.id);
                 }
-                
+
                 // Auto-assign current user as manager for the new user
                 const { data: { user: currentUser } } = await supabase.auth.getUser();
                 if (currentUser) {
@@ -111,7 +111,7 @@ export default function Team() {
                         .update({ manager_id: currentUser.id })
                         .eq('id', data.user.id);
                 }
-                
+
                 toast({
                     title: "Success",
                     description: `${inviteFullName} has been added as ${getRoleLabel(inviteRole)}.`,
@@ -131,13 +131,13 @@ export default function Team() {
                 variant: "destructive"
             });
         }
-        
+
         setIsInviting(false);
     };
 
     const handlePromote = async () => {
         if (!selectedMember || !selectedRole) return;
-        
+
         setIsPromoting(true);
         const { error } = await promoteUser(selectedMember, selectedRole as AppRole);
         setIsPromoting(false);
@@ -160,7 +160,7 @@ export default function Team() {
 
     const handleSetManager = async (userId: string, managerId: string) => {
         const { error } = await setManager(userId, managerId || null);
-        
+
         if (error) {
             toast({
                 title: "Error",
@@ -176,7 +176,7 @@ export default function Team() {
     };
 
     // Sort members by role level
-    const sortedMembers = [...members].sort((a, b) => 
+    const sortedMembers = [...members].sort((a, b) =>
         getRoleLevelNum(a.role) - getRoleLevelNum(b.role)
     );
 
@@ -250,7 +250,7 @@ export default function Team() {
                                         Share this password with the new member to let them log in.
                                     </p>
                                 </div>
-                                <Button 
+                                <Button
                                     className="w-full"
                                     onClick={handleInviteMember}
                                     disabled={isInviting}
@@ -286,9 +286,9 @@ export default function Team() {
                                     {sortedMembers.map((member) => {
                                         const roleLevel = getRoleLevelNum(member.role);
                                         const indent = Math.min(roleLevel - 1, 6) * 16;
-                                        const canManage = currentUserRole && 
+                                        const canManage = currentUserRole &&
                                             getRoleLevelNum(currentUserRole) < roleLevel;
-                                        
+
                                         return (
                                             <div
                                                 key={member.id}
@@ -319,8 +319,8 @@ export default function Team() {
                                                 {canManage && (
                                                     <Dialog>
                                                         <DialogTrigger asChild>
-                                                            <Button 
-                                                                variant="ghost" 
+                                                            <Button
+                                                                variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => {
                                                                     setSelectedMember(member.id);
@@ -344,8 +344,8 @@ export default function Team() {
                                                                     <label className="text-sm font-medium mb-2 block">
                                                                         Promote to Role
                                                                     </label>
-                                                                    <Select 
-                                                                        value={selectedRole} 
+                                                                    <Select
+                                                                        value={selectedRole}
                                                                         onValueChange={(v) => setSelectedRole(v as AppRole)}
                                                                     >
                                                                         <SelectTrigger>
@@ -362,7 +362,7 @@ export default function Team() {
                                                                             }
                                                                         </SelectContent>
                                                                     </Select>
-                                                                    <Button 
+                                                                    <Button
                                                                         className="mt-2 w-full"
                                                                         disabled={!selectedRole || isPromoting}
                                                                         onClick={handlePromote}
@@ -375,18 +375,19 @@ export default function Team() {
                                                                     <label className="text-sm font-medium mb-2 block">
                                                                         Set Manager
                                                                     </label>
-                                                                    <Select 
-                                                                        value={selectedManager} 
+                                                                    <Select
+                                                                        value={selectedManager || "no_manager"}
                                                                         onValueChange={(v) => {
-                                                                            setSelectedManager(v);
-                                                                            handleSetManager(member.id, v);
+                                                                            const newValue = v === "no_manager" ? "" : v;
+                                                                            setSelectedManager(newValue);
+                                                                            handleSetManager(member.id, newValue);
                                                                         }}
                                                                     >
                                                                         <SelectTrigger>
                                                                             <SelectValue placeholder="Select manager" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
-                                                                            <SelectItem value="">No Manager</SelectItem>
+                                                                            <SelectItem value="no_manager">No Manager</SelectItem>
                                                                             {potentialManagers
                                                                                 .filter(m => m.id !== member.id && getRoleLevelNum(m.role) < getRoleLevelNum(member.role))
                                                                                 .map(m => (

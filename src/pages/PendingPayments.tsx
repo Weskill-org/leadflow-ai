@@ -6,14 +6,26 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Download, Phone, Mail, AlertCircle } from 'lucide-react';
-
-// Mock data - filtered for Pending Payments
-const leads = [
-    { id: 4, name: 'Ishita Reddy', email: 'ishita@example.com', phone: '+91 98765 43213', college: 'SRM Chennai', status: 'Payment Pending', owner: 'Rahul Kumar', date: '2024-03-13', received: '₹2,000', projected: '₹5,000' },
-];
+import { useLeads } from '@/hooks/useLeads';
+import { format } from 'date-fns';
 
 export default function PendingPayments() {
     const [searchTerm, setSearchTerm] = useState('');
+    const { data: leads, isLoading } = useLeads({ search: searchTerm });
+
+    const pendingLeads = leads?.filter(lead => {
+        const projected = lead.revenue_projected || 0;
+        const received = lead.revenue_received || 0;
+        return projected > received;
+    }) || [];
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            maximumFractionDigits: 0
+        }).format(amount);
+    };
 
     return (
         <DashboardLayout>
@@ -61,37 +73,65 @@ export default function PendingPayments() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {leads.map((lead) => (
-                                    <TableRow key={lead.id}>
-                                        <TableCell className="font-medium">{lead.name}</TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col text-sm">
-                                                <span className="flex items-center gap-1 text-muted-foreground">
-                                                    <Mail className="h-3 w-3" /> {lead.email}
-                                                </span>
-                                                <span className="flex items-center gap-1 text-muted-foreground">
-                                                    <Phone className="h-3 w-3" /> {lead.phone}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>{lead.college}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary" className="bg-orange-500/10 text-orange-500">
-                                                {lead.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right font-medium">{lead.received}</TableCell>
-                                        <TableCell className="text-right text-muted-foreground">{lead.projected}</TableCell>
-                                        <TableCell className="text-right font-bold text-destructive">
-                                            ₹{parseInt(lead.projected.replace(/[^0-9]/g, '')) - parseInt(lead.received.replace(/[^0-9]/g, ''))}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button size="sm" className="gradient-primary">
-                                                Send Reminder
-                                            </Button>
+                                {isLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="text-center py-8">
+                                            Loading...
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                ) : pendingLeads.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                                            No pending payments found
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    pendingLeads.map((lead) => {
+                                        const projected = lead.revenue_projected || 0;
+                                        const received = lead.revenue_received || 0;
+                                        const pending = projected - received;
+
+                                        return (
+                                            <TableRow key={lead.id}>
+                                                <TableCell className="font-medium">{lead.name}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col text-sm">
+                                                        {lead.email && (
+                                                            <span className="flex items-center gap-1 text-muted-foreground">
+                                                                <Mail className="h-3 w-3" /> {lead.email}
+                                                            </span>
+                                                        )}
+                                                        {lead.phone && (
+                                                            <span className="flex items-center gap-1 text-muted-foreground">
+                                                                <Phone className="h-3 w-3" /> {lead.phone}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>{lead.college || '-'}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="secondary" className="capitalize">
+                                                        {lead.status.replace('_', ' ')}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">
+                                                    {formatCurrency(received)}
+                                                </TableCell>
+                                                <TableCell className="text-right text-muted-foreground">
+                                                    {formatCurrency(projected)}
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-destructive">
+                                                    {formatCurrency(pending)}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button size="sm" className="gradient-primary">
+                                                        Send Reminder
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
