@@ -68,7 +68,7 @@ serve(async (req) => {
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
-        
+
         // Amount in paise - limit to reasonable range (1 INR to 10 Lakh INR)
         if (amount < 100 || amount > 100000000) {
             return new Response(
@@ -92,16 +92,12 @@ serve(async (req) => {
             );
         }
 
-        if (!customer.email || !isValidEmail(customer.email)) {
-            return new Response(
-                JSON.stringify({ error: 'Valid customer email is required' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
+        const hasEmail = customer.email && isValidEmail(customer.email);
+        const hasPhone = customer.phone && isValidPhone(customer.phone);
 
-        if (!customer.phone || !isValidPhone(customer.phone)) {
+        if (!hasEmail && !hasPhone) {
             return new Response(
-                JSON.stringify({ error: 'Valid customer phone is required' }),
+                JSON.stringify({ error: 'At least one valid contact method (email or phone) is required' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
@@ -159,12 +155,12 @@ serve(async (req) => {
                 description: sanitizedDescription,
                 customer: {
                     name: sanitizedCustomerName,
-                    email: customer.email.trim().toLowerCase(),
-                    contact: customer.phone.replace(/[^\d+]/g, '')
+                    ...(hasEmail && { email: customer.email.trim().toLowerCase() }),
+                    ...(hasPhone && { contact: customer.phone.replace(/[^\d+]/g, '') })
                 },
                 notify: {
-                    sms: true,
-                    email: true
+                    sms: !!hasPhone,
+                    email: !!hasEmail
                 },
                 reminder_enable: true,
                 notes: {
