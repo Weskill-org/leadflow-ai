@@ -17,7 +17,8 @@ export default function AutoDialer() {
     const [callStatus, setCallStatus] = useState<LeadStatus | ''>('');
 
     // Fetch only 'new' leads for auto-dialer
-    const { data: leads, isLoading } = useLeads({ statusFilter: 'new' });
+    const { data: leadsData, isLoading } = useLeads({ statusFilter: 'new' });
+    const leads = leadsData?.leads || [];
     const updateLead = useUpdateLead();
 
     const currentLead = leads?.[currentLeadIndex];

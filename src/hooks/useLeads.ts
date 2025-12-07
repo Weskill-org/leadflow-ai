@@ -13,9 +13,11 @@ type LeadStatus = Database['public']['Enums']['lead_status'];
 interface UseLeadsOptions {
   search?: string;
   statusFilter?: string;
+  page?: number;
+  pageSize?: number;
 }
 
-export function useLeads({ search, statusFilter }: UseLeadsOptions = {}) {
+export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseLeadsOptions = {}) {
   const queryClient = useQueryClient();
 
   // Set up real-time subscription
@@ -43,11 +45,11 @@ export function useLeads({ search, statusFilter }: UseLeadsOptions = {}) {
   }, [queryClient]);
 
   return useQuery({
-    queryKey: ['leads', search, statusFilter],
-    queryFn: async (): Promise<Lead[]> => {
+    queryKey: ['leads', search, statusFilter, page, pageSize],
+    queryFn: async (): Promise<{ leads: Lead[]; count: number }> => {
       let query = supabase
         .from('leads')
-        .select('*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)')
+        .select('*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)', { count: 'exact' })
         .order('created_at', { ascending: false });
 
       if (statusFilter && statusFilter !== 'all') {
@@ -60,13 +62,17 @@ export function useLeads({ search, statusFilter }: UseLeadsOptions = {}) {
         );
       }
 
-      const { data, error } = await query;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) {
         throw error;
       }
 
-      return data || [];
+      return { leads: data || [], count: count || 0 };
     },
     placeholderData: (previousData) => previousData,
   });

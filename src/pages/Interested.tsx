@@ -42,7 +42,8 @@ const statusColors: Record<string, string> = {
 export default function Interested() {
     const [searchQuery, setSearchQuery] = useState('');
     // Filter for 'interested' status
-    const { data: leads, isLoading } = useLeads({ search: searchQuery, statusFilter: 'interested' });
+    const { data: leadsData, isLoading } = useLeads({ search: searchQuery, statusFilter: 'interested' });
+    const leads = leadsData?.leads || [];
     const { data: programs } = usePrograms();
     const updateLead = useUpdateLead();
     const { user } = useAuth();

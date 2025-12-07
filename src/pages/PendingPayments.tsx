@@ -11,7 +11,8 @@ import { format } from 'date-fns';
 
 export default function PendingPayments() {
     const [searchTerm, setSearchTerm] = useState('');
-    const { data: leads, isLoading } = useLeads({ search: searchTerm });
+    const { data: leadsData, isLoading } = useLeads({ search: searchTerm });
+    const leads = leadsData?.leads || [];
 
     const pendingLeads = leads?.filter(lead => {
         const projected = lead.revenue_projected || 0;

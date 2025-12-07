@@ -6,43 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  Search, Filter, MoreHorizontal, Phone, Mail, X
+  Search, Filter, MoreHorizontal, Phone, Mail, X, ChevronLeft, ChevronRight, Users
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useLeads, useUpdateLead } from '@/hooks/useLeads';
-import { usePrograms } from '@/hooks/usePrograms';
+
+import { useLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserRole, isRoleAllowedToMarkPaid } from '@/hooks/useUserRole';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Constants } from '@/integrations/supabase/types';
-import { format } from 'date-fns';
-import { toast } from 'sonner';
 import { AddLeadDialog } from '@/components/leads/AddLeadDialog';
 import { UploadLeadsDialog } from '@/components/leads/UploadLeadsDialog';
+import { AssignLeadsDialog } from '@/components/leads/AssignLeadsDialog';
+import { LeadsTable } from '@/components/leads/LeadsTable';
 
-const statusColors: Record<string, string> = {
-  'new': 'bg-blue-500/10 text-blue-500',
-  'interested': 'bg-yellow-500/10 text-yellow-500',
-  'paid': 'bg-green-500/10 text-green-500',
-  'follow_up': 'bg-purple-500/10 text-purple-500',
-  'dnd': 'bg-red-500/10 text-red-500',
-  'not_interested': 'bg-gray-500/10 text-gray-500',
-  'rnr': 'bg-orange-500/10 text-orange-500',
-};
+
 
 export default function AllLeads() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,6 +29,10 @@ export default function AllLeads() {
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
   const [selectedColleges, setSelectedColleges] = useState<Set<string>>(new Set());
   const [selectedPrograms, setSelectedPrograms] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   // Fetch filter options
   const { data: filterOptions } = useQuery({
@@ -78,38 +60,16 @@ export default function AllLeads() {
     }
   });
 
-  const { data: leads, isLoading } = useLeads({
+  const { data: leadsData, isLoading } = useLeads({
     search: debouncedSearchQuery,
-    statusFilter: selectedStatuses.size === 1 ? Array.from(selectedStatuses)[0] : undefined
+    statusFilter: selectedStatuses.size === 1 ? Array.from(selectedStatuses)[0] : undefined,
+    page,
+    pageSize
   });
-  const { data: programs } = usePrograms();
-  const updateLead = useUpdateLead();
+  const leads = leadsData?.leads || [];
+  const totalCount = leadsData?.count || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
   const { user } = useAuth();
-  const { data: userRole } = useUserRole();
-
-  const handleStatusChange = async (leadId: string, newStatus: string) => {
-    try {
-      await updateLead.mutateAsync({
-        id: leadId,
-        status: newStatus as any
-      });
-      toast.success('Status updated successfully');
-    } catch (error) {
-      toast.error('Failed to update status');
-    }
-  };
-
-  const handleProgramChange = async (leadId: string, newProgram: string) => {
-    try {
-      await updateLead.mutateAsync({
-        id: leadId,
-        product_purchased: newProgram
-      });
-      toast.success('Program updated successfully');
-    } catch (error) {
-      toast.error('Failed to update program');
-    }
-  };
 
   if (isLoading) {
     return (
@@ -127,6 +87,12 @@ export default function AllLeads() {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">All Leads</h1>
           <div className="flex gap-2">
+            {selectedLeads.size > 0 && (
+              <Button onClick={() => setAssignDialogOpen(true)} variant="secondary">
+                <Users className="mr-2 h-4 w-4" />
+                Assign {selectedLeads.size} to...
+              </Button>
+            )}
             <UploadLeadsDialog />
             <AddLeadDialog />
           </div>
@@ -198,190 +164,50 @@ export default function AllLeads() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone Number</TableHead>
-                  <TableHead>College</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Program</TableHead>
-                  <TableHead>Payment Link</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leads?.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                      No leads found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  leads?.map((lead) => (
-                    <TableRow key={lead.id}>
-                      <TableCell className="font-medium">{lead.name}</TableCell>
-                      <TableCell>
-                        {lead.email && (
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <Mail className="h-3 w-3" /> {lead.email}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {lead.phone && (
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <Phone className="h-3 w-3" /> {lead.phone}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>{lead.college || '-'}</TableCell>
-                      <TableCell>
-                        <Select
-                          defaultValue={lead.status}
-                          onValueChange={(value) => handleStatusChange(lead.id, value)}
-                        >
-                          <SelectTrigger className={`w-[140px] h-8 ${statusColors[lead.status] || 'bg-secondary'}`}>
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Constants.public.Enums.lead_status.map((status) => (
-                              <SelectItem
-                                key={status}
-                                value={status}
-                                className="capitalize"
-                                disabled={status === 'paid' && !isRoleAllowedToMarkPaid(userRole)}
-                              >
-                                {status.replace('_', ' ')}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        {lead.sales_owner?.full_name || 'Unknown'}
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(lead.created_at), 'MMM d, yyyy')}
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          defaultValue={lead.product_purchased || undefined}
-                          onValueChange={(value) => handleProgramChange(lead.id, value)}
-                        >
-                          <SelectTrigger className="w-[140px] h-8">
-                            <SelectValue placeholder="Select Program" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {programs?.map((program) => (
-                              <SelectItem key={program.id} value={program.name}>
-                                {program.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        {lead.payment_link ? (
-                          <Button
-                            variant={lead.status === 'paid' ? 'default' : 'outline'}
-                            size="sm"
-                            className={`h-8 ${lead.status === 'paid' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(lead.payment_link!);
-                                toast.success('Link copied to clipboard');
-                              } catch (err) {
-                                console.error('Failed to copy:', err);
-                                toast.error('Failed to copy link');
-                              }
-                            }}
-                          >
-                            {lead.status === 'paid' ? 'Paid' : 'Copy Link'}
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8"
-                            onClick={async () => {
-                              if (!lead.product_purchased) {
-                                toast.error('Please select a program first');
-                                return;
-                              }
-
-                              const selectedProgram = programs?.find(p => p.name === lead.product_purchased);
-
-                              if (!selectedProgram) {
-                                toast.error('Program details not found');
-                                return;
-                              }
-
-                              // Convert price to paise (assuming price in DB is in INR)
-                              const amount = selectedProgram.price * 100;
-
-                              try {
-                                toast.loading('Creating payment link...');
-                                const { data, error } = await supabase.functions.invoke('create-payment-link', {
-                                  body: {
-                                    amount,
-                                    description: `Payment for ${lead.product_purchased}`,
-                                    customer: {
-                                      name: lead.name,
-                                      email: lead.email || '',
-                                      phone: lead.phone || ''
-                                    },
-                                    reference_id: lead.id
-                                  }
-                                });
-
-                                if (error) throw error;
-                                if (data.error) throw new Error(data.error);
-
-                                await updateLead.mutateAsync({
-                                  id: lead.id,
-                                  payment_link: data.short_url,
-                                  revenue_projected: selectedProgram.price
-                                });
-
-                                toast.dismiss();
-                                toast.success('Payment link created successfully');
-                              } catch (error: any) {
-                                toast.dismiss();
-                                console.error('Payment Link Error:', error);
-                                toast.error(error.message || 'Failed to create payment link');
-                              }
-                            }}
-                          >
-                            Create Link
-                          </Button>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Lead</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <LeadsTable
+              leads={leads}
+              loading={isLoading}
+              selectedLeads={selectedLeads}
+              onSelectionChange={setSelectedLeads}
+            />
           </CardContent>
+          <div className="flex items-center justify-between px-4 py-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} leads
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1 || isLoading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <div className="text-sm font-medium">
+                Page {page} of {totalPages || 1}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages || isLoading}
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </Card>
       </div>
+
+      <AssignLeadsDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        selectedLeadIds={Array.from(selectedLeads)}
+        onSuccess={() => setSelectedLeads(new Set())}
+      />
     </DashboardLayout>
   );
 }

@@ -8,7 +8,8 @@ import { useLeads } from '@/hooks/useLeads';
 import { format } from 'date-fns';
 
 export default function Dashboard() {
-  const { data: leads = [], isLoading } = useLeads();
+  const { data: leadsData, isLoading } = useLeads();
+  const leads = leadsData?.leads || [];
 
   // Calculate stats
   const today = new Date();

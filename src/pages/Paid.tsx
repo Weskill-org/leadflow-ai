@@ -42,7 +42,8 @@ const statusColors: Record<string, string> = {
 export default function Paid() {
     const [searchQuery, setSearchQuery] = useState('');
     // Filter for 'paid' status
-    const { data: leads, isLoading } = useLeads({ search: searchQuery, statusFilter: 'paid' });
+    const { data: leadsData, isLoading } = useLeads({ search: searchQuery, statusFilter: 'paid' });
+    const leads = leadsData?.leads || [];
     const { data: programs } = usePrograms();
     const updateLead = useUpdateLead();
     const { user } = useAuth();
