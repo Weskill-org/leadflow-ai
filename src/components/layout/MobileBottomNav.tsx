@@ -11,7 +11,7 @@ const primaryNavItems = [
   { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
   { icon: Users, label: 'Leads', path: '/dashboard/leads' },
   { icon: UserCheck, label: 'Interested', path: '/dashboard/interested' },
-  { icon: CreditCard, label: 'Paid', path: '/dashboard/paid' },
+  { icon: Phone, label: 'Auto Dialer', path: '/dashboard/dialer' },
   { icon: Menu, label: 'More', path: 'menu' },
 ];
 
