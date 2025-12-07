@@ -43,7 +43,7 @@ export function MultiSelectFilter({
                     {title}
                     {selectedValues?.size > 0 && (
                         <>
-                            <CommandSeparator orientation="vertical" className="mx-2 h-4" />
+                            <div className="mx-2 h-4 w-px bg-border" />
                             <Badge
                                 variant="secondary"
                                 className="rounded-sm px-1 font-normal lg:hidden"

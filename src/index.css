@@ -112,6 +112,11 @@
   html {
     @apply scroll-smooth;
   }
+
+  /* Safe area padding for mobile devices with notches */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
 }
 
 @layer utilities {

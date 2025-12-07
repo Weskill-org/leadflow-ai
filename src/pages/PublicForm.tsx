@@ -80,7 +80,7 @@ export default function PublicForm() {
 
             const { error } = await supabase
                 .from('leads')
-                .insert(leadData);
+                .insert(leadData as any);
 
             if (error) throw error;
 

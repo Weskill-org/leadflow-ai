@@ -46,7 +46,7 @@ export function AddIntegrationDialog({ serviceName, displayName, isOpen, onOpenC
                     service_name: serviceName,
                     api_key: finalApiKey,
                     is_active: true
-                });
+                } as any);
 
             if (error) throw error;
 

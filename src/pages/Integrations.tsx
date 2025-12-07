@@ -27,7 +27,7 @@ export default function Integrations() {
 
     const { data: connectedKeys, isLoading } = useQuery({
         queryKey: ['integration-keys', user?.id],
-        queryFn: async () => {
+        queryFn: async (): Promise<{ service_name: string; is_active: boolean | null }[]> => {
             if (!user?.id) return [];
             const { data, error } = await supabase
                 .from('integration_api_keys')
@@ -35,7 +35,7 @@ export default function Integrations() {
                 .eq('user_id', user.id);
 
             if (error) throw error;
-            return data;
+            return (data || []) as { service_name: string; is_active: boolean | null }[];
         },
         enabled: !!user?.id
     });

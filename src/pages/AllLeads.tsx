@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  Search, Filter, MoreHorizontal, Phone, Mail
+  Search, Filter, MoreHorizontal, Phone, Mail, X
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -66,24 +66,13 @@ export default function AllLeads() {
       // Let's use programs table for programs.
       const { data: programs } = await supabase.from('programs').select('name');
 
-      // For colleges, getting distinct values from leads table is a bit tricky with simple select.
-      // We can use a stored procedure or just fetch all leads (expensive) or use a separate query.
-      // Supabase doesn't support .distinct() directly on a column easily without rpc.
-      // For now, let's fetch all leads strictly for the purpose of extracting unique colleges? 
-      // No, that's bad for scaling.
-      // Let's try to use a .rpc if we had one, but we don't.
-      // Alternative: Fetch distinct colleges using a workaround or just mock it for now?
-      // Or: "select college from leads" and process in JS (still heavy if many leads).
-      // Better: Create a Postgres function `get_unique_colleges`.
-      // For this iteration, I will fetch `select('college')` and unique it in JS. 
-      // It's not ideal for 1M rows but fine for < 10k.
       const { data: leadsData } = await supabase.from('leads').select('college');
       const uniqueColleges = Array.from(new Set(leadsData?.map(l => l.college).filter(Boolean)));
 
       return {
         owners: owners?.map(o => ({ label: o.full_name || 'Unknown', value: o.id })) || [],
-        programs: programs?.map(p => ({ label: p.name, value: p.name })) || [],
-        colleges: uniqueColleges.map(c => ({ label: c!, value: c! })) || [],
+        programs: ((programs || []) as { name: string }[]).map(p => ({ label: p.name, value: p.name })),
+        colleges: uniqueColleges.map(c => ({ label: c!, value: c! })),
         statuses: Constants.public.Enums.lead_status.map(s => ({ label: s.replace('_', ' '), value: s }))
       };
     }
@@ -91,12 +80,7 @@ export default function AllLeads() {
 
   const { data: leads, isLoading } = useLeads({
     search: debouncedSearchQuery,
-    filters: {
-      owners: Array.from(selectedOwners),
-      statuses: Array.from(selectedStatuses),
-      colleges: Array.from(selectedColleges),
-      programs: Array.from(selectedPrograms)
-    }
+    statusFilter: selectedStatuses.size === 1 ? Array.from(selectedStatuses)[0] : undefined
   });
   const { data: programs } = usePrograms();
   const updateLead = useUpdateLead();
