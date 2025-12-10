@@ -78,13 +78,24 @@ export default function Team() {
         setIsInviting(true);
 
         try {
+            // Get current user to set as manager
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+            if (!currentUser) {
+                throw new Error("You must be logged in to invite members.");
+            }
+
             // Create user with Supabase auth
+            // Pass manager_id in metadata so the trigger can set it immediately
             const { data, error } = await supabase.auth.signUp({
                 email: inviteEmail,
                 password: invitePassword,
                 options: {
                     emailRedirectTo: `${window.location.origin}/`,
-                    data: { full_name: inviteFullName }
+                    data: {
+                        full_name: inviteFullName,
+                        manager_id: currentUser.id
+                    }
                 }
             });
 
@@ -103,14 +114,7 @@ export default function Team() {
                         .eq('user_id', data.user.id);
                 }
 
-                // Auto-assign current user as manager for the new user
-                const { data: { user: currentUser } } = await supabase.auth.getUser();
-                if (currentUser) {
-                    await supabase
-                        .from('profiles')
-                        .update({ manager_id: currentUser.id })
-                        .eq('id', data.user.id);
-                }
+                // Manager assignment is now handled by the trigger using metadata
 
                 toast({
                     title: "Success",
