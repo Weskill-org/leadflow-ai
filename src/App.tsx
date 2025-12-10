@@ -21,6 +21,7 @@ import Settings from "./pages/Settings";
 import Forms from "./pages/Forms";
 import FormBuilder from "./pages/FormBuilder";
 import PublicForm from "./pages/PublicForm";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/lg" element={<LGDashboard />} />
             <Route path="/dashboard/leads" element={<AllLeads />} />
