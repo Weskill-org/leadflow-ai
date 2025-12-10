@@ -168,7 +168,7 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                                         </FormControl>
                                         <SelectContent>
                                             {Constants.public.Enums.lead_status.map((status) => (
-                                                <SelectItem key={status} value={status} className="capitalize">
+                                                <SelectItem key={status} value={status} className="capitalize" disabled={status === 'paid'}>
                                                     {status.replace('_', ' ')}
                                                 </SelectItem>
                                             ))}

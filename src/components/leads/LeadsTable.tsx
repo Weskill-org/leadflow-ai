@@ -271,7 +271,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }:
                           key={status}
                           value={status}
                           className="capitalize"
-                          disabled={status === 'paid' && !isRoleAllowedToMarkPaid(userRole)}
+                          disabled={status === 'paid'}
                         >
                           {status.replace('_', ' ')}
                         </SelectItem>
@@ -354,7 +354,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }:
                                 key={status}
                                 value={status}
                                 className="capitalize"
-                                disabled={status === 'paid' && !isRoleAllowedToMarkPaid(userRole)}
+                                disabled={status === 'paid'}
                               >
                                 {status.replace('_', ' ')}
                               </DropdownMenuRadioItem>
