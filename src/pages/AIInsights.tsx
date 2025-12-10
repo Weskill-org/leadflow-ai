@@ -1,9 +1,27 @@
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Brain, TrendingUp, AlertTriangle, CheckCircle2, Lightbulb } from 'lucide-react';
+import { Brain, TrendingUp, AlertTriangle, CheckCircle2, Lightbulb, Phone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function AIInsights() {
+    const navigate = useNavigate();
+    const { toast } = useToast();
+
+    const handleViewLeads = () => {
+        // Navigate to All Leads page
+        navigate('/dashboard/leads');
+    };
+
+    const handleSendReminder = () => {
+        // Show success toast
+        toast({
+            title: "Reminders Sent",
+            description: "Successfully sent follow-up reminders to 3 leads.",
+        });
+    };
+
     return (
         <DashboardLayout>
             <div className="p-8 space-y-8">
@@ -40,7 +58,13 @@ export default function AIInsights() {
                                 <p className="text-sm text-muted-foreground mb-2">
                                     Based on recent activity, these leads from IIT Delhi are 80% likely to convert today.
                                 </p>
-                                <Button size="sm" className="gradient-primary">View Leads</Button>
+                                <Button
+                                    size="sm"
+                                    className="gradient-primary"
+                                    onClick={handleViewLeads}
+                                >
+                                    View Leads
+                                </Button>
                             </div>
                         </div>
 
@@ -53,7 +77,13 @@ export default function AIInsights() {
                                 <p className="text-sm text-muted-foreground mb-2">
                                     3 leads from last week's webinar haven't been contacted yet. Risk of drop-off is high.
                                 </p>
-                                <Button size="sm" variant="outline">Send Reminder</Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleSendReminder}
+                                >
+                                    Send Reminder
+                                </Button>
                             </div>
                         </div>
                     </CardContent>
@@ -104,5 +134,3 @@ export default function AIInsights() {
         </DashboardLayout>
     );
 }
-
-import { Phone } from 'lucide-react';
