@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, CheckCircle2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function PublicForm() {
@@ -52,43 +51,38 @@ export default function PublicForm() {
 
         setSubmitting(true);
         try {
-            // Map form data to leads table columns
-            const leadData: Record<string, any> = {
-                form_id: form.id,
-                status: 'new',
-                created_by_id: form.created_by_id // Assign to form creator by default
-            };
-
-            const fields = form.fields as any[];
-            fields.forEach(field => {
-                if (field.attribute && formData[field.id]) {
-                    leadData[field.attribute] = formData[field.id];
-                }
-            });
-
-            // Capture link_id if present in URL
+            // Get URL parameters
             const linkId = searchParams.get('link_id');
-            if (linkId) {
-                leadData.lg_link_id = linkId;
-            }
-
-            // Capture UTM parameters
             const utmSource = searchParams.get('utm_source');
-            if (utmSource) {
-                leadData.ca_name = utmSource;
+
+            // Call secure edge function for public form submission
+            const response = await fetch(
+                `https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/submit-public-form`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        formId: form.id,
+                        formData,
+                        linkId: linkId || undefined,
+                        utmSource: utmSource || undefined
+                    })
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to submit form');
             }
-
-            const { error } = await supabase
-                .from('leads')
-                .insert(leadData as any);
-
-            if (error) throw error;
 
             setSubmitted(true);
             toast.success('Form submitted successfully!');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error submitting form:', error);
-            toast.error('Failed to submit form. Please try again.');
+            toast.error(error.message || 'Failed to submit form. Please try again.');
         } finally {
             setSubmitting(false);
         }

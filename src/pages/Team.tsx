@@ -8,6 +8,15 @@ import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail } from 'l
 import { useTeam, AppRole } from '@/hooks/useTeam';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { z } from 'zod';
+
+// Validation schema for team member invitation
+const inviteSchema = z.object({
+    email: z.string().trim().email({ message: "Please enter a valid email address" }).max(255, { message: "Email must be less than 255 characters" }),
+    fullName: z.string().trim().min(1, { message: "Full name is required" }).max(100, { message: "Full name must be less than 100 characters" }).regex(/^[a-zA-Z\s'-]+$/, { message: "Full name can only contain letters, spaces, hyphens, and apostrophes" }),
+    password: z.string().min(6, { message: "Password must be at least 6 characters" }).max(72, { message: "Password must be less than 72 characters" }),
+    role: z.enum(["company", "company_subadmin", "cbo", "vp", "avp", "dgm", "agm", "sm", "tl", "bde", "intern", "ca"])
+});
 import {
     Dialog,
     DialogContent,
@@ -57,19 +66,19 @@ export default function Team() {
     }
 
     const handleInviteMember = async () => {
-        if (!inviteEmail || !inviteFullName || !invitePassword) {
-            toast({
-                title: "Error",
-                description: "Please fill in all fields.",
-                variant: "destructive"
-            });
-            return;
-        }
+        // Validate inputs with Zod
+        const validationResult = inviteSchema.safeParse({
+            email: inviteEmail,
+            fullName: inviteFullName,
+            password: invitePassword,
+            role: inviteRole
+        });
 
-        if (invitePassword.length < 6) {
+        if (!validationResult.success) {
+            const firstError = validationResult.error.errors[0];
             toast({
-                title: "Error",
-                description: "Password must be at least 6 characters.",
+                title: "Validation Error",
+                description: firstError.message,
                 variant: "destructive"
             });
             return;
@@ -78,56 +87,35 @@ export default function Team() {
         setIsInviting(true);
 
         try {
-            // Get current user to set as manager
-            const { data: { user: currentUser } } = await supabase.auth.getUser();
-
-            if (!currentUser) {
-                throw new Error("You must be logged in to invite members.");
-            }
-
-            // Create user with Supabase auth
-            // Pass manager_id in metadata so the trigger can set it immediately
-            const { data, error } = await supabase.auth.signUp({
-                email: inviteEmail,
-                password: invitePassword,
-                options: {
-                    emailRedirectTo: `${window.location.origin}/`,
-                    data: {
-                        full_name: inviteFullName,
-                        manager_id: currentUser.id
-                    }
+            // Call secure edge function for team member invitation
+            const { data, error } = await supabase.functions.invoke('invite-team-member', {
+                body: {
+                    email: validationResult.data.email,
+                    fullName: validationResult.data.fullName,
+                    password: validationResult.data.password,
+                    role: validationResult.data.role
                 }
             });
 
             if (error) {
-                toast({
-                    title: "Error",
-                    description: error.message,
-                    variant: "destructive"
-                });
-            } else if (data.user) {
-                // Update the user's role if not the default 'bde'
-                if (inviteRole !== 'bde') {
-                    await supabase
-                        .from('user_roles')
-                        .update({ role: inviteRole })
-                        .eq('user_id', data.user.id);
-                }
-
-                // Manager assignment is now handled by the trigger using metadata
-
-                toast({
-                    title: "Success",
-                    description: `${inviteFullName} has been added as ${getRoleLabel(inviteRole)}.`,
-                });
-                setInviteDialogOpen(false);
-                setInviteEmail('');
-                setInviteFullName('');
-                setInvitePassword('');
-                setInviteRole('bde');
-                // Refetch team after a short delay to allow the trigger to create profile
-                setTimeout(() => refetch(), 1500);
+                throw new Error(error.message || "Failed to invite member");
             }
+
+            if (data?.error) {
+                throw new Error(data.error);
+            }
+
+            toast({
+                title: "Success",
+                description: `${inviteFullName} has been added as ${getRoleLabel(inviteRole)}.`,
+            });
+            setInviteDialogOpen(false);
+            setInviteEmail('');
+            setInviteFullName('');
+            setInvitePassword('');
+            setInviteRole('bde');
+            // Refetch team after a short delay
+            setTimeout(() => refetch(), 1500);
         } catch (err: any) {
             toast({
                 title: "Error",

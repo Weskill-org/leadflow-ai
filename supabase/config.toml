@@ -1,1 +1,13 @@
 project_id = "uykdyqdeyilpulaqlqip"
+
+[functions.create-payment-link]
+verify_jwt = true
+
+[functions.handle-razorpay-webhook]
+verify_jwt = false
+
+[functions.invite-team-member]
+verify_jwt = true
+
+[functions.submit-public-form]
+verify_jwt = false
