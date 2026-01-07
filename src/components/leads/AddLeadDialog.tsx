@@ -39,6 +39,7 @@ const formSchema = z.object({
     phone: z.string().min(10, 'Phone number must be at least 10 digits').optional().or(z.literal('')),
     college: z.string().optional(),
     status: z.enum(Constants.public.Enums.lead_status as unknown as [string, ...string[]]),
+    lead_source: z.string().optional(),
 });
 
 export function AddLeadDialog() {
@@ -54,6 +55,7 @@ export function AddLeadDialog() {
             phone: '',
             college: '',
             status: 'new',
+            lead_source: 'Others',
         },
     });
 
@@ -70,6 +72,7 @@ export function AddLeadDialog() {
                 phone: values.phone || null,
                 college: values.college || null,
                 status: values.status as any,
+                lead_source: values.lead_source || null,
                 created_by_id: user.id,
                 sales_owner_id: user.id,
             });
@@ -147,6 +150,30 @@ export function AddLeadDialog() {
                                     <FormControl>
                                         <Input placeholder="IIT Delhi" {...field} />
                                     </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="lead_source"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Lead Source</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a source" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {Constants.public.Enums.lead_source.map((source) => (
+                                                <SelectItem key={source} value={source}>
+                                                    {source}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                     <FormMessage />
                                 </FormItem>
                             )}

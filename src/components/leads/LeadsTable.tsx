@@ -222,6 +222,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }:
               <TableHead className="font-semibold">Email</TableHead>
               <TableHead className="font-semibold">Phone Number</TableHead>
               <TableHead className="font-semibold">College</TableHead>
+              <TableHead className="font-semibold">Lead Source</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold">Owner</TableHead>
               <TableHead className="font-semibold">Date</TableHead>
@@ -257,6 +258,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }:
                   )}
                 </TableCell>
                 <TableCell>{lead.college || '-'}</TableCell>
+                <TableCell>{lead.lead_source || '-'}</TableCell>
                 <TableCell>
                   <Select
                     defaultValue={lead.status}
