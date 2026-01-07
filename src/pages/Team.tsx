@@ -59,7 +59,7 @@ export default function Team() {
 
     function getRoleLevelNum(role: AppRole): number {
         const levels: Record<AppRole, number> = {
-            company: 1, company_subadmin: 2, cbo: 3, vp: 4, avp: 5,
+            platform_admin: 0, company: 1, company_subadmin: 2, cbo: 3, vp: 4, avp: 5,
             dgm: 6, agm: 7, sm: 8, tl: 9, bde: 10, intern: 11, ca: 12
         };
         return levels[role] || 99;

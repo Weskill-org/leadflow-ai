@@ -14,6 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
+      companies: {
+        Row: {
+          admin_id: string
+          created_at: string | null
+          custom_domain: string | null
+          domain_status: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          primary_color: string | null
+          slug: string
+          total_licenses: number
+          updated_at: string | null
+          used_licenses: number
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string | null
+          custom_domain?: string | null
+          domain_status?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          primary_color?: string | null
+          slug: string
+          total_licenses?: number
+          updated_at?: string | null
+          used_licenses?: number
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string | null
+          custom_domain?: string | null
+          domain_status?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          primary_color?: string | null
+          slug?: string
+          total_licenses?: number
+          updated_at?: string | null
+          used_licenses?: number
+        }
+        Relationships: []
+      }
+      company_licenses: {
+        Row: {
+          amount_paid: number
+          company_id: string
+          created_at: string | null
+          id: string
+          payment_id: string | null
+          quantity: number
+          razorpay_order_id: string | null
+          status: string | null
+        }
+        Insert: {
+          amount_paid: number
+          company_id: string
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          quantity: number
+          razorpay_order_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount_paid?: number
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          quantity?: number
+          razorpay_order_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_licenses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      country_prefixes: {
+        Row: {
+          country_code: string
+          country_name: string
+          created_at: string
+          dial_code: string
+          flag_emoji: string
+          id: string
+        }
+        Insert: {
+          country_code: string
+          country_name: string
+          created_at?: string
+          dial_code: string
+          flag_emoji: string
+          id?: string
+        }
+        Update: {
+          country_code?: string
+          country_name?: string
+          created_at?: string
+          dial_code?: string
+          flag_emoji?: string
+          id?: string
+        }
+        Relationships: []
+      }
       forms: {
         Row: {
           created_at: string
@@ -284,9 +400,28 @@ export type Database = {
           },
         ]
       }
+      platform_admins: {
+        Row: {
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          company_id: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -297,6 +432,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          company_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -307,6 +443,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          company_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -316,6 +453,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_manager_id_fkey"
             columns: ["manager_id"]
@@ -364,11 +508,44 @@ export type Database = {
         }
         Relationships: []
       }
+      wallets: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      add_company_licenses: {
+        Args: { _company_id: string; _quantity: number }
+        Returns: boolean
+      }
+      add_credits: {
+        Args: { amount: number; transaction_label: string }
+        Returns: boolean
+      }
+      can_add_team_member: { Args: { _company_id: string }; Returns: boolean }
       can_promote_user: {
         Args: {
           _new_role: Database["public"]["Enums"]["app_role"]
@@ -377,10 +554,30 @@ export type Database = {
         }
         Returns: boolean
       }
+      decrement_used_licenses: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
+      deduct_ai_credits: { Args: { amount?: number }; Returns: undefined }
+      deduct_credits:
+        | {
+            Args: { amount: number; reason: string; transaction_type?: string }
+            Returns: undefined
+          }
+        | {
+            Args: { amount: number; transaction_label: string }
+            Returns: boolean
+          }
+      generate_referral_code: {
+        Args: { user_id_param: string }
+        Returns: string
+      }
+      get_company_by_domain: { Args: { _domain: string }; Returns: string }
       get_role_level: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: number
       }
+      get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -392,33 +589,41 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_used_licenses: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
+      is_company_admin: { Args: { _user_id: string }; Returns: boolean }
       is_in_hierarchy: {
         Args: { _manager_id: string; _user_id: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      reset_monthly_xp: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role:
-      | "company"
-      | "company_subadmin"
-      | "cbo"
-      | "vp"
-      | "avp"
-      | "dgm"
-      | "agm"
-      | "sm"
-      | "tl"
-      | "bde"
-      | "intern"
-      | "ca"
+        | "platform_admin"
+        | "company"
+        | "company_subadmin"
+        | "cbo"
+        | "vp"
+        | "avp"
+        | "dgm"
+        | "agm"
+        | "sm"
+        | "tl"
+        | "bde"
+        | "intern"
+        | "ca"
       lead_status:
-      | "new"
-      | "interested"
-      | "not_interested"
-      | "follow_up"
-      | "rnr"
-      | "dnd"
-      | "paid"
+        | "new"
+        | "interested"
+        | "not_interested"
+        | "follow_up"
+        | "rnr"
+        | "dnd"
+        | "paid"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -432,121 +637,122 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
     Enums: {
       app_role: [
+        "platform_admin",
         "company",
         "company_subadmin",
         "cbo",
@@ -568,17 +774,6 @@ export const Constants = {
         "rnr",
         "dnd",
         "paid",
-      ],
-      lead_source: [
-        "Meta Ads",
-        "Google Ads",
-        "Linkedin Ads",
-        "Whatsapp Leads",
-        "App Leads",
-        "RCB",
-        "Email Marketing",
-        "Referral",
-        "Others",
       ],
     },
   },

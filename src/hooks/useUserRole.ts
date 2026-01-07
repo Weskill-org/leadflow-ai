@@ -28,6 +28,7 @@ export function useUserRole() {
 }
 
 export const HIERARCHY_LEVELS: Record<AppRole, number> = {
+    'platform_admin': 110,
     'company': 100,
     'company_subadmin': 90,
     'cbo': 80,

@@ -164,20 +164,9 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Lead Source</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select a source" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {Constants.public.Enums.lead_source.map((source) => (
-                                                <SelectItem key={source} value={source}>
-                                                    {source}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <FormControl>
+                                        <Input placeholder="e.g., Website, Referral, etc." {...field} />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}

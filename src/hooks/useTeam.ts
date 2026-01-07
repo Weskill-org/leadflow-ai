@@ -21,6 +21,7 @@ export interface TeamMember {
 }
 
 const ROLE_LABELS: Record<AppRole, string> = {
+  platform_admin: 'Platform Admin',
   company: 'Company Admin',
   company_subadmin: 'Company SubAdmin',
   cbo: 'CBO',
@@ -36,6 +37,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
 };
 
 const ROLE_LEVELS: Record<AppRole, number> = {
+  platform_admin: 0,
   company: 1,
   company_subadmin: 2,
   cbo: 3,
