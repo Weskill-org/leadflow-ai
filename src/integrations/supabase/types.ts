@@ -490,33 +490,6 @@ export type Database = {
         }
         Relationships: []
       }
-      referral_codes: {
-        Row: {
-          created_at: string | null
-          id: string
-          referral_code: string
-          referred_by: string | null
-          total_referrals: number | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          referral_code: string
-          referred_by?: string | null
-          total_referrals?: number | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          referral_code?: string
-          referred_by?: string | null
-          total_referrals?: number | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           id: string
@@ -616,10 +589,6 @@ export type Database = {
             Args: { amount: number; transaction_label: string }
             Returns: boolean
           }
-      generate_referral_code: {
-        Args: { user_id_param: string }
-        Returns: string
-      }
       get_company_by_domain: { Args: { _domain: string }; Returns: string }
       get_role_level: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
