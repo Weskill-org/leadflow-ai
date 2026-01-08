@@ -2,12 +2,13 @@ import { ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   LayoutDashboard, Users, UserCheck, CreditCard, Settings,
-  LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText
+  LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield
 } from 'lucide-react';
 import MobileBottomNav from './MobileBottomNav';
 
@@ -24,6 +25,7 @@ const navItems = [
   { icon: Users, label: 'Team', path: '/dashboard/team' },
   { icon: Workflow, label: 'Automations', path: '/dashboard/automations' },
   { icon: Link2, label: 'Integrations', path: '/dashboard/integrations' },
+  { icon: Building2, label: 'Manage Company', path: '/dashboard/company' },
   { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
 ];
 
@@ -34,6 +36,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, loading, signOut } = useAuth();
   const { data: role } = useUserRole();
+  const { company, isCompanyAdmin } = useCompany();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -47,6 +50,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const filteredNavItems = navItems.filter(item => {
     if (item.label === 'Integrations') {
       return role === 'company' || role === 'company_subadmin';
+    }
+    if (item.label === 'Manage Company') {
+      return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
     }
     return true;
   });
@@ -84,10 +90,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-                <span className="text-lg font-bold text-primary-foreground">L³</span>
+                <span className="text-lg font-bold text-primary-foreground">
+                  {company?.name?.[0] || 'L³'}
+                </span>
               </div>
               <div>
-                <h1 className="font-semibold text-sidebar-foreground">Lead Cubed</h1>
+                <h1 className="font-semibold text-sidebar-foreground">
+                  {company?.name || 'Lead Cubed'}
+                </h1>
                 <p className="text-xs text-muted-foreground">AI-Powered CRM</p>
               </div>
             </div>

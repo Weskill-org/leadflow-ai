@@ -11,3 +11,15 @@ verify_jwt = true
 
 [functions.submit-public-form]
 verify_jwt = false
+
+[functions.register-company]
+verify_jwt = false
+
+[functions.purchase-licenses]
+verify_jwt = true
+
+[functions.handle-license-webhook]
+verify_jwt = false
+
+[functions.get-public-form]
+verify_jwt = false

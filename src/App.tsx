@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import RegisterCompany from "./pages/RegisterCompany";
 import Dashboard from "./pages/Dashboard";
 import AllLeads from "./pages/AllLeads";
 import LGDashboard from "./pages/LGDashboard";
@@ -22,6 +23,8 @@ import Forms from "./pages/Forms";
 import FormBuilder from "./pages/FormBuilder";
 import PublicForm from "./pages/PublicForm";
 import ResetPassword from "./pages/ResetPassword";
+import ManageCompany from "./pages/ManageCompany";
+import PlatformAdmin from "./pages/PlatformAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/register-company" element={<RegisterCompany />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/lg" element={<LGDashboard />} />
@@ -52,6 +56,8 @@ const App = () => (
             <Route path="/dashboard/forms" element={<Forms />} />
             <Route path="/dashboard/forms/new" element={<FormBuilder />} />
             <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
+            <Route path="/dashboard/company" element={<ManageCompany />} />
+            <Route path="/platform" element={<PlatformAdmin />} />
             <Route path="/form/:id" element={<PublicForm />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

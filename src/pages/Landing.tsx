@@ -60,9 +60,9 @@ export default function Landing() {
             <Link to="/auth">
               <Button variant="ghost" size="sm">Login</Button>
             </Link>
-            <Link to="/auth?mode=signup">
+            <Link to="/register-company">
               <Button size="sm" className="gradient-primary">
-                Access CRM
+                Register Company
               </Button>
             </Link>
           </div>
