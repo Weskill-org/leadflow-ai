@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { useCreateLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Upload, FileUp } from 'lucide-react';
+import { Upload, FileUp, Download } from 'lucide-react';
 import Papa from 'papaparse';
 import { Constants } from '@/integrations/supabase/types';
 
@@ -27,6 +27,23 @@ export function UploadLeadsDialog() {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
         }
+    };
+
+    const handleDownloadFormat = () => {
+        const csvContent =
+            'Name,Email,Phone,College,Status,Lead Source\n' +
+            'John Doe,john@example.com,9876543210,Example University,new,Website\n' +
+            'Jane Smith,jane@test.com,9123456780,Tech Institute,interested,Referral';
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'CRM Data Upload.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
     };
 
     const handleUpload = async () => {
@@ -48,18 +65,19 @@ export function UploadLeadsDialog() {
                             : 'new';
 
                         return {
-                            name: row.Name || row.name,
+                            name: row.Name || row.name || 'Unknown', // Name not mandatory, default provided if missing
                             email: row.Email || row.email || null,
                             phone: row.Phone || row.phone || null,
                             college: row.College || row.college || null,
+                            lead_source: row['Lead Source'] || row['lead source'] || row.lead_source || null,
                             status: validStatus,
                             created_by_id: user.id,
                             sales_owner_id: user.id,
                         };
-                    }).filter(lead => lead.name); // Ensure name exists
+                    }).filter(lead => lead.phone); // Ensure phone exists (Mandatory)
 
                     if (leads.length === 0) {
-                        toast.error('No valid leads found in CSV');
+                        toast.error('No valid leads found in CSV. Phone Number is mandatory.');
                         setUploading(false);
                         return;
                     }
@@ -85,17 +103,23 @@ export function UploadLeadsDialog() {
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload CSV
+            <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleDownloadFormat}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Format
                 </Button>
-            </DialogTrigger>
+                <DialogTrigger asChild>
+                    <Button variant="outline">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload CSV
+                    </Button>
+                </DialogTrigger>
+            </div>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Upload Leads CSV</DialogTitle>
                     <DialogDescription>
-                        Upload a CSV file with columns: Name, Email, Phone, College, Status.
+                        Upload a CSV file with columns: Name, Email, Phone, College, Status, Lead Source. Phone is mandatory.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
