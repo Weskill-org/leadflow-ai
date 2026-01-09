@@ -1,0 +1,36 @@
+Initialising login role...
+Connecting to remote database...
+Do you want to push these migrations to the remote database?
+ • 20260107234208_6c741aaf-13b1-4061-85da-bc1b21df3b2c.sql
+ • 20260107234253_0af745a8-c204-48e6-aa46-b09997c510cb.sql
+ • 20260108191621_3911ae17-5fbe-477a-bd8a-cf8245a1cff5.sql
+ • 20260108191906_862187bd-3b32-4173-b813-fb5f893d6542.sql
+ • 20260108192307_92491f15-d89f-474d-ae4e-c63faf51f83f.sql
+ • 20260109000000_fix_registration_and_autojoin.sql
+
+ [Y/n] Applying migration 20260107234208_6c741aaf-13b1-4061-85da-bc1b21df3b2c.sql...
+ERROR: relation "companies" already exists (SQLSTATE 42P07)                                                  
+At statement: 0                                                                                              
+-- Phase 1: Multi-Tenant SaaS Platform Schema                                                                
+                                                                                                             
+-- 1.1 Add platform_admin to app_role enum                                                                   
+-- ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'platform_admin' BEFORE 'company';                     
+                                                                                                             
+-- 1.2 Create companies table                                                                                
+CREATE TABLE public.companies (                                                                              
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),                                                             
+  admin_id uuid NOT NULL,                                                                                    
+  name text NOT NULL,                                                                                        
+  slug text UNIQUE NOT NULL,                                                                                 
+  custom_domain text UNIQUE,                                                                                 
+  domain_status text DEFAULT 'pending' CHECK (domain_status IN ('pending', 'verifying', 'active', 'failed')),
+  logo_url text,                                                                                             
+  primary_color text DEFAULT '#8B5CF6',                                                                      
+  total_licenses integer NOT NULL DEFAULT 1 CHECK (total_licenses >= 1),                                     
+  used_licenses integer NOT NULL DEFAULT 1 CHECK (used_licenses >= 0),                                       
+  is_active boolean DEFAULT true,                                                                            
+  created_at timestamptz DEFAULT now(),                                                                      
+  updated_at timestamptz DEFAULT now(),                                                                      
+  CONSTRAINT used_not_exceed_total CHECK (used_licenses <= total_licenses)                                   
+)                                                                                                            
+Try rerunning the command with --debug to troubleshoot the error.

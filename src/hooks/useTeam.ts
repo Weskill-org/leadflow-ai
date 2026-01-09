@@ -65,45 +65,64 @@ export function useTeam() {
     }
 
     try {
-      // 1. Fetch current user's role
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
+      // 1. Fetch current user's role and company details safely
+      const [myProfileResult, myRoleResult] = await Promise.all([
+        supabase.from('profiles').select('company_id').eq('id', user.id).single(),
+        supabase.from('user_roles').select('role').eq('user_id', user.id).single()
+      ]);
 
-      const myRole = (roleData?.role as AppRole) || null;
+      const myCompanyId = myProfileResult.data?.company_id;
+      const myRole = (myRoleResult.data?.role as AppRole) || null;
+
       if (myRole) {
         setCurrentUserRole(myRole);
       }
 
-      // 2. Fetch ALL profiles and ALL roles in parallel
-      const [profilesResult, rolesResult] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, full_name, email, phone, avatar_url, manager_id, created_at')
-          .order('created_at', { ascending: true }),
-        supabase
+      // If regular user and no company, return empty
+      if (!myCompanyId && myRole !== 'platform_admin') {
+        setMembers([]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch profiles for THIS company
+      let profilesQuery = supabase
+        .from('profiles')
+        .select('id, full_name, email, phone, avatar_url, manager_id, created_at')
+        .order('created_at', { ascending: true });
+
+      if (myCompanyId) {
+        profilesQuery = profilesQuery.eq('company_id', myCompanyId);
+      }
+
+      const { data: profiles, error: profilesError } = await profilesQuery;
+      if (profilesError) throw profilesError;
+
+      // 3. Fetch roles ONLY for these profiles
+      const memberIds = profiles?.map(p => p.id) || [];
+      let rolesData: { user_id: string; role: string }[] = [];
+
+      if (memberIds.length > 0) {
+        const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('user_id, role')
-      ]);
+          .in('user_id', memberIds);
 
-      if (profilesResult.error) throw profilesResult.error;
-      if (rolesResult.error) throw rolesResult.error;
+        if (rolesError) throw rolesError;
+        rolesData = roles || [];
+      }
 
-      // 3. Map roles for easy lookup
+      // 4. Map roles for easy lookup
       const roleMap = new Map<string, AppRole>();
-      rolesResult.data?.forEach(r => {
+      rolesData.forEach(r => {
         if (r.user_id && r.role) {
           roleMap.set(r.user_id, r.role as AppRole);
         }
       });
 
-      // 4. Build initial TeamMember list (unfiltered)
-      //    We need a map to easily look up managers for the UI
+      // 5. Build initial TeamMember list
       const allMembersMap = new Map<string, TeamMember>();
-
-      const allMembers: TeamMember[] = (profilesResult.data || []).map(profile => ({
+      const allMembers: TeamMember[] = (profiles || []).map(profile => ({
         id: profile.id,
         email: profile.email,
         full_name: profile.full_name,

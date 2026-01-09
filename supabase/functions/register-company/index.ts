@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -64,7 +64,7 @@ serve(async (req) => {
         .select('id')
         .eq('slug', testSlug)
         .single()
-      
+
       if (!existing) {
         slug = testSlug
         slugExists = false
@@ -78,7 +78,7 @@ serve(async (req) => {
       email: adminEmail,
       password: adminPassword,
       email_confirm: true,
-      user_metadata: { full_name: adminFullName }
+      user_metadata: { full_name: adminFullName, role: 'company' }
     })
 
     if (userError) {

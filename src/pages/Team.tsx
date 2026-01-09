@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail, Trash2 } from 'lucide-react';
+import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail, Trash2, Lock } from 'lucide-react';
 import { useTeam, AppRole } from '@/hooks/useTeam';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
+import { useCompany } from '@/hooks/useCompany';
+import { useNavigate } from 'react-router-dom';
 
 // Validation schema for team member invitation
 const inviteSchema = z.object({
@@ -45,6 +47,8 @@ import {
 
 export default function Team() {
     const { members, loading, currentUserRole, promoteUser, setManager, deleteMember, getRoleLabel, getAssignableRoles, refetch } = useTeam();
+    const { company } = useCompany();
+    const navigate = useNavigate();
     const { toast } = useToast();
     const [selectedMember, setSelectedMember] = useState<string | null>(null);
     const [selectedRole, setSelectedRole] = useState<AppRole | ''>('');
@@ -216,83 +220,96 @@ export default function Team() {
                         <h1 className="text-2xl font-bold">Team Management</h1>
                         <p className="text-muted-foreground">Manage your organization hierarchy and roles.</p>
                     </div>
-                    <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="gradient-primary">
-                                <UserPlus className="h-4 w-4 mr-2" />
-                                Invite Member
+                    <div className="flex items-center gap-2">
+                        {company && company.used_licenses >= company.total_licenses ? (
+                            <Button
+                                variant="destructive"
+                                onClick={() => navigate('/dashboard/company')}
+                                className="gap-2"
+                            >
+                                <Lock className="h-4 w-4" />
+                                License Limit Exhausted, Buy Now
                             </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Invite New Team Member</DialogTitle>
-                                <DialogDescription>
-                                    Add a new member and assign their role in the organization.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 pt-4">
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Full Name</label>
-                                    <Input
-                                        placeholder="Enter full name"
-                                        value={inviteFullName}
-                                        onChange={(e) => setInviteFullName(e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Email</label>
-                                    <Input
-                                        type="email"
-                                        placeholder="Enter email address"
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Role / Position</label>
-                                    <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {assignableRoles.map(role => (
-                                                <SelectItem key={role} value={role}>
-                                                    {getRoleLabel(role)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        You can only assign roles below your level.
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Temporary Password</label>
-                                    <Input
-                                        type="password"
-                                        placeholder="Min 6 characters"
-                                        value={invitePassword}
-                                        onChange={(e) => setInvitePassword(e.target.value)}
-                                    />
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Share this password with the new member to let them log in.
-                                    </p>
-                                </div>
-                                <Button
-                                    className="w-full"
-                                    onClick={handleInviteMember}
-                                    disabled={isInviting}
-                                >
-                                    {isInviting ? (
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    ) : (
-                                        <Mail className="h-4 w-4 mr-2" />
-                                    )}
-                                    Send Invitation
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                        ) : (
+                            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button className="gradient-primary">
+                                        <UserPlus className="h-4 w-4 mr-2" />
+                                        Invite Member
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Invite New Team Member</DialogTitle>
+                                        <DialogDescription>
+                                            Add a new member and assign their role in the organization.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 pt-4">
+                                        <div>
+                                            <label className="text-sm font-medium mb-2 block">Full Name</label>
+                                            <Input
+                                                placeholder="Enter full name"
+                                                value={inviteFullName}
+                                                onChange={(e) => setInviteFullName(e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium mb-2 block">Email</label>
+                                            <Input
+                                                type="email"
+                                                placeholder="Enter email address"
+                                                value={inviteEmail}
+                                                onChange={(e) => setInviteEmail(e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium mb-2 block">Role / Position</label>
+                                            <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select role" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {assignableRoles.map(role => (
+                                                        <SelectItem key={role} value={role}>
+                                                            {getRoleLabel(role)}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                You can only assign roles below your level.
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium mb-2 block">Temporary Password</label>
+                                            <Input
+                                                type="password"
+                                                placeholder="Min 6 characters"
+                                                value={invitePassword}
+                                                onChange={(e) => setInvitePassword(e.target.value)}
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Share this password with the new member to let them log in.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            className="w-full"
+                                            onClick={handleInviteMember}
+                                            disabled={isInviting}
+                                        >
+                                            {isInviting ? (
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <Mail className="h-4 w-4 mr-2" />
+                                            )}
+                                            Send Invitation
+                                        </Button>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        )}
+                    </div>
                 </div>
 
                 {loading ? (
