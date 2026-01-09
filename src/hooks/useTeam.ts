@@ -237,6 +237,20 @@ export function useTeam() {
     loading,
     currentUserRole,
     promoteUser,
+    deleteMember: async (targetUserId: string) => {
+      if (!user) return { error: new Error('Not authenticated') };
+
+      const { data, error: funcError } = await supabase.functions.invoke('delete-team-member', {
+        body: { targetUserId }
+      });
+
+      if (funcError) return { error: funcError };
+      if (data?.error) return { error: new Error(data.error) };
+
+      // Optimistic update
+      setMembers(prev => prev.filter(m => m.id !== targetUserId));
+      return { error: null };
+    },
     setManager,
     getRoleLabel,
     getAssignableRoles,

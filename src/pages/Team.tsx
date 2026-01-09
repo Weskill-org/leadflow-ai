@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail } from 'lucide-react';
+import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail, Trash2 } from 'lucide-react';
 import { useTeam, AppRole } from '@/hooks/useTeam';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,14 +32,27 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Team() {
-    const { members, loading, currentUserRole, promoteUser, setManager, getRoleLabel, getAssignableRoles, refetch } = useTeam();
+    const { members, loading, currentUserRole, promoteUser, setManager, deleteMember, getRoleLabel, getAssignableRoles, refetch } = useTeam();
     const { toast } = useToast();
     const [selectedMember, setSelectedMember] = useState<string | null>(null);
     const [selectedRole, setSelectedRole] = useState<AppRole | ''>('');
     const [selectedManager, setSelectedManager] = useState<string>('');
     const [isPromoting, setIsPromoting] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Invite member state
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -164,6 +177,29 @@ export default function Team() {
                 title: "Success",
                 description: "Manager updated successfully.",
             });
+        }
+    };
+
+    const handleDeleteMember = async () => {
+        if (!memberToDelete) return;
+        setIsDeleting(true);
+        const { error } = await deleteMember(memberToDelete);
+        setIsDeleting(false);
+
+        if (error) {
+            toast({
+                title: "Error",
+                description: error.message,
+                variant: "destructive"
+            });
+        } else {
+            toast({
+                title: "Success",
+                description: "Team member removed successfully.",
+            });
+            setDeleteDialogOpen(false);
+            setMemberToDelete(null);
+            setSelectedMember(null); // Close the manage dialog too if needed, though state is separate
         }
     };
 
@@ -391,6 +427,20 @@ export default function Team() {
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </div>
+
+                                                                <div className="pt-4 border-t">
+                                                                    <Button
+                                                                        variant="destructive"
+                                                                        className="w-full"
+                                                                        onClick={() => {
+                                                                            setMemberToDelete(member.id);
+                                                                            setDeleteDialogOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4 mr-2" />
+                                                                        Remove Member
+                                                                    </Button>
+                                                                </div>
                                                             </div>
                                                         </DialogContent>
                                                     </Dialog>
@@ -449,6 +499,27 @@ export default function Team() {
                     </div>
                 )}
             </div>
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the team member
+                            and remove their access to the platform.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteMember}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </DashboardLayout>
     );
 }
