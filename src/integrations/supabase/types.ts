@@ -130,6 +130,27 @@ export type Database = {
         }
         Relationships: []
       }
+      debug_logs: {
+        Row: {
+          created_at: string | null
+          details: string | null
+          id: string
+          message: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          message?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          message?: string | null
+        }
+        Relationships: []
+      }
       forms: {
         Row: {
           created_at: string
@@ -523,30 +544,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      wallets: {
-        Row: {
-          created_at: string
-          credits: number
-          id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          credits?: number
-          id?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          credits?: number
           id?: string
           updated_at?: string
           user_id?: string

@@ -52,11 +52,14 @@ export default function ManageCompany() {
   const [purchasing, setPurchasing] = useState(false);
 
   const [companyName, setCompanyName] = useState('');
+  const [companySlug, setCompanySlug] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#8B5CF6');
   const [seatsToBuy, setSeatsToBuy] = useState(1);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [savingSlug, setSavingSlug] = useState(false);
+  const [slugError, setSlugError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -89,6 +92,7 @@ export default function ManageCompany() {
 
       setCompany(companyData);
       setCompanyName(companyData.name);
+      setCompanySlug(companyData.slug);
       setCustomDomain(companyData.custom_domain || '');
       setPrimaryColor(companyData.primary_color || '#8B5CF6');
       setLogoUrl(companyData.logo_url);
@@ -207,8 +211,90 @@ export default function ManageCompany() {
     navigator.clipboard.writeText(text);
     toast({
       title: 'Copied!',
-      description: 'Domain copied to clipboard',
+      description: 'URL copied to clipboard',
     });
+  };
+
+  const validateSlug = (slug: string): boolean => {
+    // Only lowercase letters, numbers, and hyphens allowed
+    const slugRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
+    if (!slug) {
+      setSlugError('Slug is required');
+      return false;
+    }
+    if (slug.length < 3) {
+      setSlugError('Slug must be at least 3 characters');
+      return false;
+    }
+    if (slug.length > 32) {
+      setSlugError('Slug must be 32 characters or less');
+      return false;
+    }
+    if (!slugRegex.test(slug)) {
+      setSlugError('Only lowercase letters, numbers, and hyphens allowed');
+      return false;
+    }
+    if (slug.includes('--')) {
+      setSlugError('No consecutive hyphens allowed');
+      return false;
+    }
+    // Reserved slugs
+    const reserved = ['www', 'api', 'app', 'admin', 'dashboard', 'mail', 'smtp', 'ftp'];
+    if (reserved.includes(slug)) {
+      setSlugError('This slug is reserved');
+      return false;
+    }
+    setSlugError('');
+    return true;
+  };
+
+  const handleSlugChange = (value: string) => {
+    const normalized = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    setCompanySlug(normalized);
+    if (normalized) validateSlug(normalized);
+  };
+
+  const handleSaveSlug = async () => {
+    if (!company || !validateSlug(companySlug)) return;
+
+    setSavingSlug(true);
+    try {
+      // Check if slug is already taken
+      const { data: existing } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('slug', companySlug)
+        .neq('id', company.id)
+        .maybeSingle();
+
+      if (existing) {
+        setSlugError('This slug is already taken');
+        setSavingSlug(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('companies')
+        .update({ slug: companySlug })
+        .eq('id', company.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Workspace URL updated',
+        description: `Your new URL is ${companySlug}.fastestcrm.com`,
+      });
+
+      fetchCompanyData();
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to update slug',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingSlug(false);
+    }
   };
 
   if (loading) {
@@ -374,26 +460,69 @@ export default function ManageCompany() {
               </CardTitle>
               <CardDescription>Your workspace URL and custom domain</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className="space-y-6">
+              {/* Default Workspace URL with Editable Slug */}
+              <div className="space-y-3">
                 <Label>Default Workspace URL</Label>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 px-3 py-2 bg-muted rounded-md text-sm font-mono">
-                    {company.slug}.leadcubed.in
+                  <div className="flex items-center flex-1 bg-muted rounded-md overflow-hidden">
+                    <Input
+                      value={companySlug}
+                      onChange={(e) => handleSlugChange(e.target.value)}
+                      className="border-0 bg-transparent font-mono text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
+                      placeholder="your-company"
+                    />
+                    <span className="px-3 py-2 text-sm text-muted-foreground font-mono whitespace-nowrap border-l border-border bg-muted/50">
+                      .fastestcrm.com
+                    </span>
                   </div>
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => copyToClipboard(`${company.slug}.leadcubed.in`)}
+                    onClick={() => copyToClipboard(`https://${companySlug}.fastestcrm.com`)}
+                    title="Copy URL"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => window.open(`https://${companySlug}.fastestcrm.com`, '_blank')}
+                    title="Open in new tab"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
                 </div>
+                {slugError && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {slugError}
+                  </p>
+                )}
+                {companySlug !== company.slug && !slugError && (
+                  <Button
+                    onClick={handleSaveSlug}
+                    disabled={savingSlug}
+                    size="sm"
+                    className="mt-2"
+                  >
+                    {savingSlug ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Save New Slug
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  This is your team's default workspace URL. Only lowercase letters, numbers, and hyphens allowed.
+                </p>
               </div>
 
               <Separator />
 
-              <div className="space-y-2">
+              {/* Custom Domain */}
+              <div className="space-y-3">
                 <Label htmlFor="customDomain">Custom Domain (Optional)</Label>
                 <Input
                   id="customDomain"
@@ -416,9 +545,14 @@ export default function ManageCompany() {
                     )}
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground mt-2">
-                  Point a CNAME record to: app.leadcubed.in
-                </p>
+                <div className="p-3 bg-muted/50 rounded-md text-xs space-y-2">
+                  <p className="font-medium">To connect your custom domain:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Add a CNAME record pointing to: <code className="px-1 py-0.5 bg-background rounded">fastestcrm.com</code></li>
+                    <li>Save the domain settings below</li>
+                    <li>Wait for DNS propagation (up to 48 hours)</li>
+                  </ol>
+                </div>
               </div>
 
               <Button onClick={handleSaveSettings} disabled={saving} className="w-full">
