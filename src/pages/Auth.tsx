@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubdomainContext } from '@/contexts/SubdomainContext';
+import { useCompanyBranding } from '@/contexts/CompanyBrandingContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Building2 } from 'lucide-react';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -30,6 +32,8 @@ export default function Auth() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { signIn, signUp, user } = useAuth();
+  const { isSubdomain, company: subdomainCompany } = useSubdomainContext();
+  const { companyName, logoUrl, applyBranding } = useCompanyBranding();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -154,16 +158,50 @@ export default function Auth() {
       </div>
 
       <div className="w-full max-w-md relative">
-        <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
-          <ArrowLeft className="h-4 w-4" />
-          Back to home
-        </Link>
+        {/* Show different back link based on subdomain */}
+        {isSubdomain && subdomainCompany ? (
+          <div className="mb-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Signing in to <span className="font-medium text-foreground">{companyName || subdomainCompany.name}</span>
+            </p>
+          </div>
+        ) : (
+          <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+            Back to home
+          </Link>
+        )}
 
         <Card className="glass border-border/50">
           <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4">
-              <span className="text-xl font-bold text-primary-foreground">L³</span>
-            </div>
+            {/* Company logo or default logo based on subdomain */}
+            {applyBranding && logoUrl ? (
+              <div className="mx-auto w-16 h-16 rounded-xl overflow-hidden mb-4 border border-border/50 bg-background/50">
+                <img 
+                  src={logoUrl} 
+                  alt={companyName || 'Company logo'} 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : applyBranding && companyName ? (
+              <div className="mx-auto w-16 h-16 rounded-xl gradient-primary flex items-center justify-center mb-4">
+                <Building2 className="h-8 w-8 text-primary-foreground" />
+              </div>
+            ) : (
+              <div className="mx-auto w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4">
+                <span className="text-xl font-bold text-primary-foreground">L³</span>
+              </div>
+            )}
+            
+            {/* Company name badge for subdomain */}
+            {applyBranding && companyName && (
+              <div className="mb-2">
+                <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                  {companyName}
+                </span>
+              </div>
+            )}
+            
             <CardTitle className="text-2xl">
               {isForgotPassword
                 ? 'Reset your password'
@@ -175,8 +213,12 @@ export default function Auth() {
               {isForgotPassword
                 ? 'Enter your email to receive a reset link'
                 : isSignUp
-                  ? 'Start managing your leads with AI'
-                  : 'Sign in to access your CRM dashboard'}
+                  ? applyBranding 
+                    ? `Join ${companyName} on Fastest CRM`
+                    : 'Start managing your leads with AI'
+                  : applyBranding
+                    ? `Sign in to ${companyName}'s workspace`
+                    : 'Sign in to access your CRM dashboard'}
             </CardDescription>
           </CardHeader>
 

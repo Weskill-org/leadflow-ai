@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { SubdomainProvider } from "@/contexts/SubdomainContext";
 import { SubdomainGate } from "@/components/SubdomainGate";
 import { CompanyBrandingProvider } from "@/contexts/CompanyBrandingContext";
+import { SubdomainAccessGuard } from "@/components/SubdomainAccessGuard";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import RegisterCompany from "./pages/RegisterCompany";
@@ -66,31 +67,34 @@ const MainDomainRoutes = () => (
 );
 
 // Subdomain routes (company.fastestcrm.com) - can be customized per workspace
+// Wrapped with SubdomainAccessGuard to ensure users can only access their own company's subdomain
 const SubdomainRoutes = () => (
-  <Routes>
-    {/* On subdomain, "/" goes directly to auth/dashboard, not landing */}
-    <Route path="/" element={<Auth />} />
-    <Route path="/auth" element={<Auth />} />
-    <Route path="/reset-password" element={<ResetPassword />} />
-    <Route path="/dashboard" element={<Dashboard />} />
-    <Route path="/dashboard/lg" element={<LGDashboard />} />
-    <Route path="/dashboard/leads" element={<AllLeads />} />
-    <Route path="/dashboard/interested" element={<Interested />} />
-    <Route path="/dashboard/paid" element={<Paid />} />
-    <Route path="/dashboard/pending" element={<PendingPayments />} />
-    <Route path="/dashboard/dialer" element={<AutoDialer />} />
-    <Route path="/dashboard/ai" element={<AIInsights />} />
-    <Route path="/dashboard/team" element={<Team />} />
-    <Route path="/dashboard/automations" element={<Automations />} />
-    <Route path="/dashboard/integrations" element={<Integrations />} />
-    <Route path="/dashboard/settings" element={<Settings />} />
-    <Route path="/dashboard/forms" element={<Forms />} />
-    <Route path="/dashboard/forms/new" element={<FormBuilder />} />
-    <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
-    <Route path="/dashboard/company" element={<ManageCompany />} />
-    <Route path="/form/:id" element={<PublicForm />} />
-    <Route path="*" element={<NotFound />} />
-  </Routes>
+  <SubdomainAccessGuard>
+    <Routes>
+      {/* On subdomain, "/" goes directly to auth/dashboard, not landing */}
+      <Route path="/" element={<Auth />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard/lg" element={<LGDashboard />} />
+      <Route path="/dashboard/leads" element={<AllLeads />} />
+      <Route path="/dashboard/interested" element={<Interested />} />
+      <Route path="/dashboard/paid" element={<Paid />} />
+      <Route path="/dashboard/pending" element={<PendingPayments />} />
+      <Route path="/dashboard/dialer" element={<AutoDialer />} />
+      <Route path="/dashboard/ai" element={<AIInsights />} />
+      <Route path="/dashboard/team" element={<Team />} />
+      <Route path="/dashboard/automations" element={<Automations />} />
+      <Route path="/dashboard/integrations" element={<Integrations />} />
+      <Route path="/dashboard/settings" element={<Settings />} />
+      <Route path="/dashboard/forms" element={<Forms />} />
+      <Route path="/dashboard/forms/new" element={<FormBuilder />} />
+      <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
+      <Route path="/dashboard/company" element={<ManageCompany />} />
+      <Route path="/form/:id" element={<PublicForm />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </SubdomainAccessGuard>
 );
 
 const App = () => (
