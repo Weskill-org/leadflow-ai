@@ -51,9 +51,7 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-              <span className="text-xl font-bold text-primary-foreground">L³</span>
-            </div>
+            <img src="/fastestcrmlogo.png" alt="Fastest CRM" className="w-10 h-10 object-contain" />
             <span className="text-xl font-bold">Fastest CRM</span>
           </div>
           <div className="flex items-center gap-4">
@@ -186,9 +184,7 @@ export default function Landing() {
       <footer className="py-8 px-6 border-t border-border">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-              <span className="text-sm font-bold text-primary-foreground">L³</span>
-            </div>
+            <img src="/fastestcrmlogo.png" alt="Fastest CRM" className="w-8 h-8 object-contain" />
             <span className="font-semibold">Fastest CRM</span>
           </div>
           <p className="text-sm text-muted-foreground">
