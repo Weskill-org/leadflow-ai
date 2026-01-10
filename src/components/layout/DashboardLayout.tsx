@@ -129,7 +129,7 @@ export default function DashboardLayout({
           ) : (
             <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
               <span className="text-lg font-bold text-primary-foreground">
-                {company?.name?.[0] || 'L³'}
+                {company?.name?.[0] || 'F'}
               </span>
             </div>
           )}
