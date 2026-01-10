@@ -425,7 +425,7 @@ export default function ManageCompany() {
     }
   };
 
-
+  if (loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-16">
