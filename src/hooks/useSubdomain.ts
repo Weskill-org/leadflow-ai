@@ -28,7 +28,7 @@ export function useSubdomain(): SubdomainResult {
   const [error, setError] = useState<string | null>(null);
 
   const hostname = window.location.hostname;
-  
+
   // Determine if we're on a subdomain
   const getSubdomainInfo = () => {
     // Local development
@@ -49,7 +49,7 @@ export function useSubdomain(): SubdomainResult {
     // Check for subdomain of main domain
     if (hostname.endsWith(`.${MAIN_DOMAIN}`)) {
       const subdomain = hostname.replace(`.${MAIN_DOMAIN}`, '');
-      
+
       // Skip system subdomains
       if (ALLOWED_SUBDOMAINS.includes(subdomain)) {
         return { isSubdomain: false, subdomain: null, isMainDomain: true };
@@ -111,10 +111,15 @@ export function useSubdomain(): SubdomainResult {
       }
 
       try {
+        // Normalize hostname: remove www. and make lowercase
+        const normalizedHostname = hostname.toLowerCase().replace(/^www\./, '');
+
+        // Try to find company with this custom domain
+        // We check both with and without www to be safe, though we encourage valid entries in DB
         const { data, error: fetchError } = await supabase
           .from('companies')
           .select('id, name, slug, logo_url, primary_color, is_active')
-          .eq('custom_domain', hostname)
+          .or(`custom_domain.eq.${normalizedHostname},custom_domain.eq.www.${normalizedHostname}`)
           .eq('domain_status', 'active')
           .maybeSingle();
 

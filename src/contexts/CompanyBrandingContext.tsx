@@ -18,12 +18,12 @@ const CompanyBrandingContext = createContext<CompanyBrandingContextType>({
 function hexToHsl(hex: string): string {
   // Remove # if present
   hex = hex.replace('#', '');
-  
+
   // Parse hex to RGB
   const r = parseInt(hex.substring(0, 2), 16) / 255;
   const g = parseInt(hex.substring(2, 4), 16) / 255;
   const b = parseInt(hex.substring(4, 6), 16) / 255;
-  
+
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   let h = 0;
@@ -33,7 +33,7 @@ function hexToHsl(hex: string): string {
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    
+
     switch (max) {
       case r:
         h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
@@ -57,7 +57,7 @@ export function CompanyBrandingProvider({ children }: { children: ReactNode }) {
     companyName: company?.name || null,
     logoUrl: company?.logo_url || null,
     primaryColor: company?.primary_color || null,
-    applyBranding: isSubdomain && !!company,
+    applyBranding: !!company,
   };
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export function CompanyBrandingProvider({ children }: { children: ReactNode }) {
 
     try {
       const hslColor = hexToHsl(company.primary_color);
-      
+
       // Apply primary color to CSS variables
       document.documentElement.style.setProperty('--primary', hslColor);
       document.documentElement.style.setProperty('--accent', hslColor);

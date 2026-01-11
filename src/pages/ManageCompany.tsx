@@ -122,12 +122,12 @@ export default function ManageCompany() {
 
       // Load TXT verification record if custom domain exists
       if (companyData.custom_domain) {
-        const { data: verificationData } = await supabase
-          .from('domain_verification')
+        const { data: verificationData } = await (supabase
+          .from('domain_verification' as any)
           .select('txt_record_name, txt_record_value')
           .eq('company_id', profile.company_id)
           .eq('domain', companyData.custom_domain.toLowerCase())
-          .maybeSingle();
+          .maybeSingle()) as any;
 
         if (verificationData) {
           setVercelTxtRecord({
