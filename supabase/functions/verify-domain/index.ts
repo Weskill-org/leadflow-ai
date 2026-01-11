@@ -42,11 +42,12 @@ async function checkDnsRecords(domain: string): Promise<{ valid: boolean; record
       }
     }
 
-    // Check if any CNAME points to fastestcrm.com or our expected target
-    const validTargets = ['fastestcrm.com', 'cname.vercel-dns.com'];
+    // Check if any CNAME points to dns.fastestcrm.com
+    const validTargets = ['dns.fastestcrm.com'];
     const isValid = records.some(record => 
       validTargets.some(target => 
-        record.data.toLowerCase().includes(target.toLowerCase())
+        record.data.toLowerCase() === target.toLowerCase() ||
+        record.data.toLowerCase().endsWith('.' + target.toLowerCase())
       )
     );
 
