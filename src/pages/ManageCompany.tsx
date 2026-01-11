@@ -67,12 +67,13 @@ export default function ManageCompany() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingSlug, setSavingSlug] = useState(false);
   const [slugError, setSlugError] = useState('');
-  
+
   // Custom domain states
   const [savingDomain, setSavingDomain] = useState(false);
   const [verifyingDomain, setVerifyingDomain] = useState(false);
   const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
   const [domainError, setDomainError] = useState('');
+  const [vercelTxtRecord, setVercelTxtRecord] = useState<{ type: string; domain: string; value: string } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -118,6 +119,24 @@ export default function ManageCompany() {
         .order('created_at', { ascending: false });
 
       setLicenses(licenseData || []);
+
+      // Load TXT verification record if custom domain exists
+      if (companyData.custom_domain) {
+        const { data: verificationData } = await supabase
+          .from('domain_verification')
+          .select('txt_record_name, txt_record_value')
+          .eq('company_id', profile.company_id)
+          .eq('domain', companyData.custom_domain.toLowerCase())
+          .maybeSingle();
+
+        if (verificationData) {
+          setVercelTxtRecord({
+            type: 'TXT',
+            domain: verificationData.txt_record_name,
+            value: verificationData.txt_record_value
+          });
+        }
+      }
     } catch (err: any) {
       toast({
         title: 'Error',
@@ -372,6 +391,7 @@ export default function ManageCompany() {
       if (data?.error) throw new Error(data.error);
 
       setDnsRecords(data.records || []);
+      setVercelTxtRecord(data.vercelTxtRecord || null); // Store TXT record from Vercel
 
       toast({
         title: data.dnsValid ? 'Domain Activated!' : 'Domain Saved',
@@ -654,7 +674,7 @@ export default function ManageCompany() {
                 <div className="flex items-center justify-between">
                   <Label htmlFor="customDomain">Custom Domain</Label>
                   {company.custom_domain && (
-                    <Badge 
+                    <Badge
                       variant={company.domain_status === 'active' ? 'default' : 'outline'}
                       className={company.domain_status === 'active' ? 'bg-success/20 text-success border-success/30' : ''}
                     >
@@ -740,9 +760,12 @@ export default function ManageCompany() {
                     DNS Configuration
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    To connect your custom domain, add a CNAME record at your domain registrar:
+                    To connect your custom domain, add these DNS records at your domain registrar:
                   </p>
+
+                  {/* CNAME Record */}
                   <div className="space-y-2">
+                    <p className="text-xs font-medium">1. CNAME Record (Required)</p>
                     <div className="grid grid-cols-3 gap-2 p-3 bg-background rounded border text-xs font-mono">
                       <div>
                         <span className="text-muted-foreground block mb-1">Type</span>
@@ -768,18 +791,65 @@ export default function ManageCompany() {
                       </div>
                     </div>
                   </div>
+
+                  {/* TXT Record - Only show if we have verification data */}
+                  {vercelTxtRecord && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium">2. TXT Record (Required for domain verification)</p>
+                      <div className="grid grid-cols-3 gap-2 p-3 bg-background rounded border text-xs font-mono">
+                        <div>
+                          <span className="text-muted-foreground block mb-1">Type</span>
+                          <span className="font-semibold">TXT</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block mb-1">Name/Host</span>
+                          <div className="flex items-center gap-1">
+                            <code className="px-1 py-0.5 bg-muted rounded font-semibold">
+                              {vercelTxtRecord.domain}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => copyToClipboard(vercelTxtRecord.domain)}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block mb-1">Value</span>
+                          <div className="flex items-center gap-1">
+                            <code className="px-1 py-0.5 bg-muted rounded font-semibold text-[10px] truncate max-w-[150px]">
+                              {vercelTxtRecord.value}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => copyToClipboard(vercelTxtRecord.value)}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="text-[10px] text-muted-foreground space-y-1">
                     <p>• DNS changes can take up to 48 hours to propagate</p>
                     <p>• Click the refresh button to check verification status</p>
                     <p>• For subdomains like <code className="px-1 bg-muted rounded">crm.yourcompany.com</code>, use "crm" as the Name</p>
+                    {vercelTxtRecord && <p>• Both CNAME and TXT records must be configured for full domain verification</p>}
                   </div>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
                   {customDomain !== (company.custom_domain || '') && (
-                    <Button 
-                      onClick={handleSaveDomain} 
+                    <Button
+                      onClick={handleSaveDomain}
                       disabled={savingDomain}
                       className="flex-1"
                     >
@@ -792,7 +862,7 @@ export default function ManageCompany() {
                     </Button>
                   )}
                   {company.custom_domain && customDomain === company.custom_domain && (
-                    <Button 
+                    <Button
                       variant="destructive"
                       onClick={handleRemoveDomain}
                       disabled={savingDomain}
