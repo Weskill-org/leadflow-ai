@@ -733,74 +733,39 @@ export default function ManageCompany() {
                   </div>
                 )}
 
-                {/* Setup Instructions */}
-                <div className="p-4 bg-muted/50 rounded-lg text-sm space-y-4">
+                {/* DNS Setup Instructions */}
+                <div className="p-4 bg-muted/50 rounded-lg text-sm space-y-3">
                   <div className="flex items-center gap-2 font-medium">
                     <Link2 className="h-4 w-4" />
-                    Custom Domain Setup (2 Steps Required)
+                    DNS Configuration
                   </div>
-                  
-                  {/* Step 1: Vercel */}
+                  <p className="text-muted-foreground text-xs">
+                    To connect your custom domain, add these DNS records at your domain registrar:
+                  </p>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px]">1</span>
-                      Add Domain to Vercel
-                    </div>
-                    <div className="pl-7 space-y-1 text-xs text-muted-foreground">
-                      <p>Go to your Vercel Dashboard → Project Settings → Domains</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span>Add:</span>
-                        <code className="px-2 py-1 bg-background rounded border font-mono">{customDomain || 'yourdomain.com'}</code>
-                        {customDomain && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => copyToClipboard(customDomain)}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        )}
+                    <div className="flex items-center justify-between p-2 bg-background rounded border text-xs font-mono">
+                      <div>
+                        <span className="text-muted-foreground">Type:</span> CNAME
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Name:</span> @
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Target:</span>
+                        <code className="px-1 py-0.5 bg-muted rounded">cname.vercel-dns.com</code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => copyToClipboard('cname.vercel-dns.com')}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
                   </div>
-
-                  {/* Step 2: DNS */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px]">2</span>
-                      Configure DNS at Your Registrar
-                    </div>
-                    <div className="pl-7 space-y-2 text-xs">
-                      <p className="text-muted-foreground">Add these records at your domain registrar:</p>
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2 p-2 bg-background rounded border font-mono text-[11px]">
-                          <span className="text-muted-foreground">Type:</span> <span className="font-semibold">CNAME</span>
-                          <span className="text-muted-foreground ml-2">Name:</span> <span className="font-semibold">@</span>
-                          <span className="text-muted-foreground ml-2">Target:</span>
-                          <code className="px-1 py-0.5 bg-muted rounded">cname.vercel-dns.com</code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={() => copyToClipboard('cname.vercel-dns.com')}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground italic">
-                          Or use A record: 76.76.21.21 (Vercel's IP)
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-[11px] text-amber-600 dark:text-amber-400">
-                    <strong>Important:</strong> Both steps are required. The domain must be added in Vercel AND DNS must point to Vercel for it to work.
-                  </div>
-
                   <p className="text-[10px] text-muted-foreground">
-                    DNS changes can take up to 48 hours to propagate. Click the refresh button to verify status.
+                    DNS changes can take up to 48 hours to propagate. Click the refresh button to check status.
                   </p>
                 </div>
 
