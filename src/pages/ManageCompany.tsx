@@ -338,7 +338,7 @@ export default function ManageCompany() {
       } else {
         toast({
           title: 'DNS Not Ready',
-          description: 'Please ensure your CNAME record points to cname.vercel-dns.com',
+          description: 'Please ensure your CNAME record points to dns.fastestcrm.com',
           variant: 'destructive',
         });
       }
@@ -740,33 +740,39 @@ export default function ManageCompany() {
                     DNS Configuration
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    To connect your custom domain, add these DNS records at your domain registrar:
+                    To connect your custom domain, add a CNAME record at your domain registrar:
                   </p>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between p-2 bg-background rounded border text-xs font-mono">
+                    <div className="grid grid-cols-3 gap-2 p-3 bg-background rounded border text-xs font-mono">
                       <div>
-                        <span className="text-muted-foreground">Type:</span> CNAME
+                        <span className="text-muted-foreground block mb-1">Type</span>
+                        <span className="font-semibold">CNAME</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Name:</span> @
+                        <span className="text-muted-foreground block mb-1">Name/Host</span>
+                        <span className="font-semibold">@ or subdomain</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Target:</span>
-                        <code className="px-1 py-0.5 bg-muted rounded">cname.vercel-dns.com</code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => copyToClipboard('cname.vercel-dns.com')}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
+                      <div>
+                        <span className="text-muted-foreground block mb-1">Target/Value</span>
+                        <div className="flex items-center gap-1">
+                          <code className="px-1 py-0.5 bg-muted rounded font-semibold">dns.fastestcrm.com</code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            onClick={() => copyToClipboard('dns.fastestcrm.com')}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    DNS changes can take up to 48 hours to propagate. Click the refresh button to check status.
-                  </p>
+                  <div className="text-[10px] text-muted-foreground space-y-1">
+                    <p>• DNS changes can take up to 48 hours to propagate</p>
+                    <p>• Click the refresh button to check verification status</p>
+                    <p>• For subdomains like <code className="px-1 bg-muted rounded">crm.yourcompany.com</code>, use "crm" as the Name</p>
+                  </div>
                 </div>
 
                 {/* Action Buttons */}
