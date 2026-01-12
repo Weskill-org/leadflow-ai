@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { useCreateLead } from '@/hooks/useLeads';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
@@ -45,6 +46,7 @@ const formSchema = z.object({
 export function AddLeadDialog() {
     const [open, setOpen] = useState(false);
     const { user } = useAuth();
+    const { company } = useCompany();
     const createLead = useCreateLead();
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -60,8 +62,8 @@ export function AddLeadDialog() {
     });
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        if (!user) {
-            toast.error('You must be logged in to add a lead');
+        if (!user || !company) {
+            toast.error('You must be logged in and part of a company to add a lead');
             return;
         }
 
@@ -75,6 +77,7 @@ export function AddLeadDialog() {
                 lead_source: values.lead_source || null,
                 created_by_id: user.id,
                 sales_owner_id: user.id,
+                company_id: company.id,
             });
             toast.success('Lead added successfully');
             setOpen(false);

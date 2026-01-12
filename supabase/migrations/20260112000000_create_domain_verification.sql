@@ -12,13 +12,14 @@ CREATE TABLE IF NOT EXISTS public.domain_verification (
 );
 
 -- Add index for faster lookups
-CREATE INDEX idx_domain_verification_company ON public.domain_verification(company_id);
-CREATE INDEX idx_domain_verification_domain ON public.domain_verification(domain);
+CREATE INDEX IF NOT EXISTS idx_domain_verification_company ON public.domain_verification(company_id);
+CREATE INDEX IF NOT EXISTS idx_domain_verification_domain ON public.domain_verification(domain);
 
 -- Enable RLS
 ALTER TABLE public.domain_verification ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can view verification records for their own company
+DROP POLICY IF EXISTS "Users can view their company's domain verification" ON public.domain_verification;
 CREATE POLICY "Users can view their company's domain verification"
   ON public.domain_verification
   FOR SELECT
@@ -29,6 +30,7 @@ CREATE POLICY "Users can view their company's domain verification"
   );
 
 -- Policy: Only company admins can insert/update verification records
+DROP POLICY IF EXISTS "Company admins can manage domain verification" ON public.domain_verification;
 CREATE POLICY "Company admins can manage domain verification"
   ON public.domain_verification
   FOR ALL
@@ -47,6 +49,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS domain_verification_updated_at ON public.domain_verification;
 CREATE TRIGGER domain_verification_updated_at
   BEFORE UPDATE ON public.domain_verification
   FOR EACH ROW

@@ -40,7 +40,25 @@ export const HIERARCHY_LEVELS: Record<AppRole, number> = {
     'tl': 20,
     'bde': 10,
     'intern': 5,
-    'ca': 0
+    'ca': 0,
+    'level_3': 80,
+    'level_4': 70,
+    'level_5': 60,
+    'level_6': 50,
+    'level_7': 40,
+    'level_8': 30,
+    'level_9': 20,
+    'level_10': 10,
+    'level_11': 5,
+    'level_12': 0,
+    'level_13': -1,
+    'level_14': -2,
+    'level_15': -3,
+    'level_16': -4,
+    'level_17': -5,
+    'level_18': -6,
+    'level_19': -7,
+    'level_20': -8,
 };
 
 export function isRoleAllowedToMarkPaid(role: AppRole | null | undefined): boolean {

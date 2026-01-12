@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail, Trash2, Lock } from 'lucide-react';
+import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail, Trash2, Lock, Pencil } from 'lucide-react';
 import { useTeam, AppRole } from '@/hooks/useTeam';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 import { useCompany } from '@/hooks/useCompany';
 import { useNavigate } from 'react-router-dom';
+import { OrgChart } from '@/components/team/OrgChart';
 
 // Validation schema for team member invitation
 const inviteSchema = z.object({
@@ -66,6 +67,55 @@ export default function Team() {
     const [inviteRole, setInviteRole] = useState<AppRole>('bde');
     const [isInviting, setIsInviting] = useState(false);
 
+    // Hierarchy Edit State
+    const [editHierarchyOpen, setEditHierarchyOpen] = useState(false);
+    const [hierarchyForm, setHierarchyForm] = useState<Record<string, string>>({});
+    const [isSavingHierarchy, setIsSavingHierarchy] = useState(false);
+    const { roleLabels } = useTeam();
+
+    const openEditHierarchy = () => {
+        // Initialize form with current labels
+        const initialForm: Record<string, string> = {};
+        for (let i = 3; i <= 20; i++) {
+            const key = `level_${i}` as AppRole;
+            initialForm[key] = getRoleLabel(key);
+        }
+        setHierarchyForm(initialForm);
+        setEditHierarchyOpen(true);
+    };
+
+    const handleSaveHierarchy = async () => {
+        if (!company?.id) return;
+        setIsSavingHierarchy(true);
+        try {
+            const updates: Record<string, string> = {};
+            // Only send level_3 to level_20
+            Object.keys(hierarchyForm).forEach(key => {
+                if (key.startsWith('level_')) {
+                    updates[key] = hierarchyForm[key];
+                }
+            });
+
+            const { error } = await supabase
+                .from('company_hierarchies')
+                .update(updates)
+                .eq('company_id', company.id);
+
+            if (error) throw error;
+
+            toast({ title: "Success", description: "Hierarchy names updated." });
+            setEditHierarchyOpen(false);
+            refetch();
+        } catch (err: any) {
+            toast({
+                title: "Error",
+                description: err.message,
+                variant: "destructive"
+            });
+        }
+        setIsSavingHierarchy(false);
+    };
+
     const assignableRoles = getAssignableRoles();
 
     // Users who can be managers (above the lowest level)
@@ -75,11 +125,21 @@ export default function Team() {
     });
 
     function getRoleLevelNum(role: AppRole): number {
-        const levels: Record<AppRole, number> = {
+        const fixedLevels: Partial<Record<AppRole, number>> = {
             platform_admin: 0, company: 1, company_subadmin: 2, cbo: 3, vp: 4, avp: 5,
             dgm: 6, agm: 7, sm: 8, tl: 9, bde: 10, intern: 11, ca: 12
         };
-        return levels[role] || 99;
+
+        if (role in fixedLevels) {
+            return fixedLevels[role]!;
+        }
+
+        if (role.startsWith('level_')) {
+            const level = parseInt(role.split('_')[1]);
+            return isNaN(level) ? 99 : level;
+        }
+
+        return 99;
     }
 
     const handleInviteMember = async () => {
@@ -221,6 +281,59 @@ export default function Team() {
                         <p className="text-muted-foreground">Manage your organization hierarchy and roles.</p>
                     </div>
                     <div className="flex items-center gap-2">
+                        {currentUserRole === 'company' && (
+                            <Dialog open={editHierarchyOpen} onOpenChange={setEditHierarchyOpen}>
+                                <Button variant="outline" onClick={openEditHierarchy}>
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Edit Hierarchy
+                                </Button>
+                                <DialogContent className="max-h-[80vh] overflow-y-auto">
+                                    <DialogHeader>
+                                        <DialogTitle>Edit Organization Hierarchy</DialogTitle>
+                                        <DialogDescription>
+                                            Customize the role names for your organization. Levels 1 & 2 are fixed.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <div className="grid grid-cols-2 gap-4 items-center p-3 bg-muted/50 rounded-md">
+                                            <div className="font-medium text-sm">Level 1 (Fixed)</div>
+                                            <div className="text-sm font-bold">{getRoleLabel('company')}</div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 items-center p-3 bg-muted/50 rounded-md">
+                                            <div className="font-medium text-sm">Level 2 (Fixed)</div>
+                                            <div className="text-sm font-bold">{getRoleLabel('company_subadmin')}</div>
+                                        </div>
+                                        {Array.from({ length: 18 }, (_, i) => i + 3).map(level => {
+                                            const key = `level_${level}`;
+                                            return (
+                                                <div key={key} className="flex items-center gap-4">
+                                                    <div className="font-medium text-sm text-muted-foreground w-16 shrink-0">Level {level}</div>
+                                                    <Input
+                                                        value={hierarchyForm[key] || ''}
+                                                        onChange={(e) => setHierarchyForm(prev => ({ ...prev, [key]: e.target.value }))}
+                                                        placeholder={`Role Name for Level ${level}`}
+                                                        className="flex-1"
+                                                    />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                                                        onClick={() => setHierarchyForm(prev => ({ ...prev, [key]: '' }))}
+                                                        title="Clear/Delete Role"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+                                        <Button className="w-full mt-4" onClick={handleSaveHierarchy} disabled={isSavingHierarchy}>
+                                            {isSavingHierarchy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                            Save Changes
+                                        </Button>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        )}
                         {company && company.used_licenses >= company.total_licenses ? (
                             <Button
                                 variant="destructive"
@@ -270,11 +383,15 @@ export default function Team() {
                                                     <SelectValue placeholder="Select role" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {assignableRoles.map(role => (
-                                                        <SelectItem key={role} value={role}>
-                                                            {getRoleLabel(role)}
-                                                        </SelectItem>
-                                                    ))}
+                                                    {assignableRoles.map(role => {
+                                                        const label = getRoleLabel(role);
+                                                        if (!label) return null;
+                                                        return (
+                                                            <SelectItem key={role} value={role}>
+                                                                {label}
+                                                            </SelectItem>
+                                                        );
+                                                    })}
                                                 </SelectContent>
                                             </Select>
                                             <p className="text-xs text-muted-foreground mt-1">
@@ -327,148 +444,24 @@ export default function Team() {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="space-y-3">
-                                    {sortedMembers.map((member) => {
-                                        const roleLevel = getRoleLevelNum(member.role);
-                                        const indent = Math.min(roleLevel - 1, 6) * 16;
-                                        const canManage = currentUserRole &&
-                                            getRoleLevelNum(currentUserRole) < roleLevel;
-
-                                        return (
-                                            <div
-                                                key={member.id}
-                                                className="flex items-center gap-4 p-4 rounded-lg border border-border bg-card/50 hover:bg-card/80 transition-colors"
-                                                style={{ marginLeft: `${indent}px` }}
-                                            >
-                                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                    <span className="font-bold text-primary">
-                                                        {member.full_name?.[0] || member.email?.[0] || '?'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <h3 className="font-semibold truncate">
-                                                            {member.full_name || 'Unnamed User'}
-                                                        </h3>
-                                                        <Badge variant="outline" className="text-xs shrink-0">
-                                                            {getRoleLabel(member.role)}
-                                                        </Badge>
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground truncate">{member.email}</p>
-                                                    {member.manager && (
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Reports to: {member.manager.full_name}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                                {canManage && (
-                                                    <Dialog>
-                                                        <DialogTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    setSelectedMember(member.id);
-                                                                    setSelectedRole('');
-                                                                    setSelectedManager(member.manager_id || '');
-                                                                }}
-                                                            >
-                                                                <ArrowUp className="h-4 w-4 mr-1" />
-                                                                Manage
-                                                            </Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent>
-                                                            <DialogHeader>
-                                                                <DialogTitle>Manage {member.full_name}</DialogTitle>
-                                                                <DialogDescription>
-                                                                    Update role or reporting structure
-                                                                </DialogDescription>
-                                                            </DialogHeader>
-                                                            <div className="space-y-4 pt-4">
-                                                                <div>
-                                                                    <label className="text-sm font-medium mb-2 block">
-                                                                        Promote to Role
-                                                                    </label>
-                                                                    <Select
-                                                                        value={selectedRole}
-                                                                        onValueChange={(v) => setSelectedRole(v as AppRole)}
-                                                                    >
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select new role" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            {assignableRoles
-                                                                                .filter(role => getRoleLevelNum(role) < getRoleLevelNum(member.role))
-                                                                                .map(role => (
-                                                                                    <SelectItem key={role} value={role}>
-                                                                                        {getRoleLabel(role)}
-                                                                                    </SelectItem>
-                                                                                ))
-                                                                            }
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                    <Button
-                                                                        className="mt-2 w-full"
-                                                                        disabled={!selectedRole || isPromoting}
-                                                                        onClick={handlePromote}
-                                                                    >
-                                                                        {isPromoting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                                                        Promote
-                                                                    </Button>
-                                                                </div>
-                                                                <div>
-                                                                    <label className="text-sm font-medium mb-2 block">
-                                                                        Set Manager
-                                                                    </label>
-                                                                    <Select
-                                                                        value={selectedManager || "no_manager"}
-                                                                        onValueChange={(v) => {
-                                                                            const newValue = v === "no_manager" ? "" : v;
-                                                                            setSelectedManager(newValue);
-                                                                            handleSetManager(member.id, newValue);
-                                                                        }}
-                                                                    >
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select manager" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="no_manager">No Manager</SelectItem>
-                                                                            {potentialManagers
-                                                                                .filter(m => m.id !== member.id && getRoleLevelNum(m.role) < getRoleLevelNum(member.role))
-                                                                                .map(m => (
-                                                                                    <SelectItem key={m.id} value={m.id}>
-                                                                                        {m.full_name || m.email} ({getRoleLabel(m.role)})
-                                                                                    </SelectItem>
-                                                                                ))
-                                                                            }
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </div>
-
-                                                                <div className="pt-4 border-t">
-                                                                    <Button
-                                                                        variant="destructive"
-                                                                        className="w-full"
-                                                                        onClick={() => {
-                                                                            setMemberToDelete(member.id);
-                                                                            setDeleteDialogOpen(true);
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4 mr-2" />
-                                                                        Remove Member
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </DialogContent>
-                                                    </Dialog>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                    {members.length === 0 && (
+                                <div className="space-y-3 overflow-hidden">
+                                    {members.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground">
                                             No team members yet.
                                         </div>
+                                    ) : (
+                                        <OrgChart
+                                            members={members}
+                                            currentUserRole={currentUserRole}
+                                            currentUserId={members.find(m => m.id === (supabase.auth.getUser() as any)?.id)?.id} // We might need a better way to get current ID if not in hook
+                                            getRoleLabel={getRoleLabel}
+                                            getRoleLevelNum={getRoleLevelNum}
+                                            onManage={(member) => {
+                                                setSelectedMember(member.id);
+                                                setSelectedRole('');
+                                                setSelectedManager(member.manager_id || '');
+                                            }}
+                                        />
                                     )}
                                 </div>
                             </CardContent>
@@ -484,28 +477,36 @@ export default function Team() {
                                 <CardDescription>12-level access control</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                {[
-                                    { role: 'company', desc: 'Full system access' },
-                                    { role: 'company_subadmin', desc: 'Admin with some restrictions' },
-                                    { role: 'cbo', desc: 'Chief Business Officer' },
-                                    { role: 'vp', desc: 'Vice President' },
-                                    { role: 'avp', desc: 'Assistant VP' },
-                                    { role: 'dgm', desc: 'Deputy General Manager' },
-                                    { role: 'agm', desc: 'Assistant General Manager' },
-                                    { role: 'sm', desc: 'Sales Manager' },
-                                    { role: 'tl', desc: 'Team Lead' },
-                                    { role: 'bde', desc: 'Business Development' },
-                                    { role: 'intern', desc: 'Intern' },
-                                    { role: 'ca', desc: 'Campus Ambassador' },
-                                ].map(({ role, desc }, idx) => (
-                                    <div key={role} className="flex items-center gap-2 text-sm">
-                                        <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                                            {idx + 1}
-                                        </span>
-                                        <span className="font-medium">{getRoleLabel(role as AppRole)}</span>
-                                        <span className="text-muted-foreground text-xs">- {desc}</span>
-                                    </div>
-                                ))}
+                                {Array.from({ length: 20 }, (_, i) => i + 1)
+                                    .filter((level) => {
+                                        let roleKey: AppRole | null = null;
+                                        if (level === 1) roleKey = 'company';
+                                        else if (level === 2) roleKey = 'company_subadmin';
+                                        else roleKey = `level_${level}` as AppRole;
+
+                                        return roleKey && getRoleLabel(roleKey);
+                                    })
+                                    .map((originalLevel, index) => {
+                                        const displayIndex = index + 1;
+                                        let roleKey: AppRole | null = null;
+                                        if (originalLevel === 1) roleKey = 'company';
+                                        else if (originalLevel === 2) roleKey = 'company_subadmin';
+                                        else roleKey = `level_${originalLevel}` as AppRole;
+
+                                        // Should be guaranteed by filter, but safe check
+                                        if (!roleKey) return null;
+                                        const label = getRoleLabel(roleKey);
+
+                                        return (
+                                            <div key={originalLevel} className="flex items-center gap-2 text-sm">
+                                                <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                                                    {displayIndex}
+                                                </span>
+                                                <span className="font-medium truncate">{label}</span>
+                                            </div>
+                                        );
+                                    })
+                                }
                                 <div className="pt-4 border-t border-border text-xs text-muted-foreground">
                                     <p>• New users start at lowest level (CA)</p>
                                     <p>• Only users above can promote others</p>
@@ -515,6 +516,105 @@ export default function Team() {
                         </Card>
                     </div>
                 )}
+
+                {/* Manage Member Dialog - Controlled by selectedMember state */}
+                <Dialog open={!!selectedMember && !deleteDialogOpen} onOpenChange={(open) => !open && setSelectedMember(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Manage {members.find(m => m.id === selectedMember)?.full_name}</DialogTitle>
+                            <DialogDescription>
+                                Update role or reporting structure
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-4">
+                            <div>
+                                <label className="text-sm font-medium mb-2 block">
+                                    Promote to Role
+                                </label>
+                                <Select
+                                    value={selectedRole}
+                                    onValueChange={(v) => setSelectedRole(v as AppRole)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select new role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {selectedMember && assignableRoles
+                                            .filter(role => {
+                                                const member = members.find(m => m.id === selectedMember);
+                                                return member && getRoleLevelNum(role) < getRoleLevelNum(member.role);
+                                            })
+                                            .map(role => {
+                                                const label = getRoleLabel(role);
+                                                if (!label) return null;
+                                                return (
+                                                    <SelectItem key={role} value={role}>
+                                                        {label}
+                                                    </SelectItem>
+                                                );
+                                            })
+                                        }
+                                    </SelectContent>
+                                </Select>
+                                <Button
+                                    className="mt-2 w-full"
+                                    disabled={!selectedRole || isPromoting}
+                                    onClick={handlePromote}
+                                >
+                                    {isPromoting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                    Promote
+                                </Button>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium mb-2 block">
+                                    Set Manager
+                                </label>
+                                <Select
+                                    value={selectedManager || "no_manager"}
+                                    onValueChange={(v) => {
+                                        const newValue = v === "no_manager" ? "" : v;
+                                        setSelectedManager(newValue);
+                                        if (selectedMember) handleSetManager(selectedMember, newValue);
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select manager" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="no_manager">No Manager</SelectItem>
+                                        {selectedMember && potentialManagers
+                                            .filter(m => {
+                                                const member = members.find(mem => mem.id === selectedMember);
+                                                return member && m.id !== member.id && getRoleLevelNum(m.role) < getRoleLevelNum(member.role);
+                                            })
+                                            .map(m => (
+                                                <SelectItem key={m.id} value={m.id}>
+                                                    {m.full_name || m.email} ({getRoleLabel(m.role)})
+                                                </SelectItem>
+                                            ))
+                                        }
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="pt-4 border-t">
+                                <Button
+                                    variant="destructive"
+                                    className="w-full"
+                                    onClick={() => {
+                                        if (selectedMember) {
+                                            setMemberToDelete(selectedMember);
+                                            setDeleteDialogOpen(true);
+                                        }
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Remove Member
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

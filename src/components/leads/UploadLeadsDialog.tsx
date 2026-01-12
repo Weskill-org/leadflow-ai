@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useCreateLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { Upload, FileUp, Download } from 'lucide-react';
 import Papa from 'papaparse';
@@ -21,6 +22,7 @@ export function UploadLeadsDialog() {
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const { user } = useAuth();
+    const { company } = useCompany();
     const createLeads = useCreateLeads();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,7 +49,10 @@ export function UploadLeadsDialog() {
     };
 
     const handleUpload = async () => {
-        if (!file || !user) return;
+        if (!file || !user || !company) {
+            if (!company) toast.error("Company information missing");
+            return;
+        }
 
         setUploading(true);
 
@@ -73,6 +78,7 @@ export function UploadLeadsDialog() {
                             status: validStatus,
                             created_by_id: user.id,
                             sales_owner_id: user.id,
+                            company_id: company.id,
                         };
                     }).filter(lead => lead.phone); // Ensure phone exists (Mandatory)
 

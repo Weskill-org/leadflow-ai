@@ -20,7 +20,7 @@ export interface TeamMember {
   };
 }
 
-const ROLE_LABELS: Record<AppRole, string> = {
+const DEFAULT_ROLE_LABELS: Record<AppRole, string> = {
   platform_admin: 'Platform Admin',
   company: 'Company Admin',
   company_subadmin: 'Company SubAdmin',
@@ -34,6 +34,24 @@ const ROLE_LABELS: Record<AppRole, string> = {
   bde: 'BDE',
   intern: 'Intern',
   ca: 'Campus Ambassador',
+  level_3: 'CBO',
+  level_4: 'VP',
+  level_5: 'AVP',
+  level_6: 'DGM',
+  level_7: 'AGM',
+  level_8: 'Sales Manager',
+  level_9: 'Team Lead',
+  level_10: 'BDE',
+  level_11: 'Intern',
+  level_12: 'Campus Ambassador',
+  level_13: 'Level 13',
+  level_14: 'Level 14',
+  level_15: 'Level 15',
+  level_16: 'Level 16',
+  level_17: 'Level 17',
+  level_18: 'Level 18',
+  level_19: 'Level 19',
+  level_20: 'Level 20',
 };
 
 const ROLE_LEVELS: Record<AppRole, number> = {
@@ -50,12 +68,31 @@ const ROLE_LEVELS: Record<AppRole, number> = {
   bde: 10,
   intern: 11,
   ca: 12,
+  level_3: 3,
+  level_4: 4,
+  level_5: 5,
+  level_6: 6,
+  level_7: 7,
+  level_8: 8,
+  level_9: 9,
+  level_10: 10,
+  level_11: 11,
+  level_12: 12,
+  level_13: 13,
+  level_14: 14,
+  level_15: 15,
+  level_16: 16,
+  level_17: 17,
+  level_18: 18,
+  level_19: 19,
+  level_20: 20,
 };
 
 export function useTeam() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState<AppRole | null>(null);
+  const [roleLabels, setRoleLabels] = useState<Record<AppRole, string>>(DEFAULT_ROLE_LABELS);
   const { user } = useAuth();
 
   const fetchTeam = useCallback(async () => {
@@ -83,6 +120,42 @@ export function useTeam() {
         setMembers([]);
         setLoading(false);
         return;
+      }
+
+      // 1.5 Fetch Company Hierarchy if available
+      if (myCompanyId) {
+        const { data: hierarchyData } = await supabase
+          .from('company_hierarchies')
+          .select('*')
+          .eq('company_id', myCompanyId)
+          .single();
+
+        if (hierarchyData) {
+          const newLabels = { ...DEFAULT_ROLE_LABELS };
+          // Map dynamic names - Allow empty strings to override defaults
+          if (hierarchyData.level_1 !== null) newLabels.company = hierarchyData.level_1;
+          if (hierarchyData.level_2 !== null) newLabels.company_subadmin = hierarchyData.level_2;
+          if (hierarchyData.level_3 !== null) { newLabels.level_3 = hierarchyData.level_3; newLabels.cbo = hierarchyData.level_3; }
+          if (hierarchyData.level_4 !== null) { newLabels.level_4 = hierarchyData.level_4; newLabels.vp = hierarchyData.level_4; }
+          if (hierarchyData.level_5 !== null) { newLabels.level_5 = hierarchyData.level_5; newLabels.avp = hierarchyData.level_5; }
+          if (hierarchyData.level_6 !== null) { newLabels.level_6 = hierarchyData.level_6; newLabels.dgm = hierarchyData.level_6; }
+          if (hierarchyData.level_7 !== null) { newLabels.level_7 = hierarchyData.level_7; newLabels.agm = hierarchyData.level_7; }
+          if (hierarchyData.level_8 !== null) { newLabels.level_8 = hierarchyData.level_8; newLabels.sm = hierarchyData.level_8; }
+          if (hierarchyData.level_9 !== null) { newLabels.level_9 = hierarchyData.level_9; newLabels.tl = hierarchyData.level_9; }
+          if (hierarchyData.level_10 !== null) { newLabels.level_10 = hierarchyData.level_10; newLabels.bde = hierarchyData.level_10; }
+          if (hierarchyData.level_11 !== null) { newLabels.level_11 = hierarchyData.level_11; newLabels.intern = hierarchyData.level_11; }
+          if (hierarchyData.level_12 !== null) { newLabels.level_12 = hierarchyData.level_12; newLabels.ca = hierarchyData.level_12; }
+          if (hierarchyData.level_13 !== null) newLabels.level_13 = hierarchyData.level_13;
+          if (hierarchyData.level_14 !== null) newLabels.level_14 = hierarchyData.level_14;
+          if (hierarchyData.level_15 !== null) newLabels.level_15 = hierarchyData.level_15;
+          if (hierarchyData.level_16 !== null) newLabels.level_16 = hierarchyData.level_16;
+          if (hierarchyData.level_17 !== null) newLabels.level_17 = hierarchyData.level_17;
+          if (hierarchyData.level_18 !== null) newLabels.level_18 = hierarchyData.level_18;
+          if (hierarchyData.level_19 !== null) newLabels.level_19 = hierarchyData.level_19;
+          if (hierarchyData.level_20 !== null) newLabels.level_20 = hierarchyData.level_20;
+
+          setRoleLabels(newLabels);
+        }
       }
 
       // 2. Fetch profiles for THIS company
@@ -186,6 +259,7 @@ export function useTeam() {
           }
         }
 
+        // Filter and ensure visible members are updated if needed
         visibleMembers = allMembers.filter(m => descendants.has(m.id));
       }
 
@@ -237,13 +311,26 @@ export function useTeam() {
     return { error };
   };
 
-  const getRoleLabel = (role: AppRole) => ROLE_LABELS[role] || role;
+  const getRoleLabel = (role: AppRole) => {
+    const label = roleLabels[role];
+    // If it's an empty string, return it as is (so we can filter it out in UI)
+    if (label === '') return '';
+    return label || role;
+  };
 
   const getAssignableRoles = (): AppRole[] => {
     if (!currentUserRole) return [];
     const currentLevel = ROLE_LEVELS[currentUserRole];
     return (Object.entries(ROLE_LEVELS) as [AppRole, number][])
       .filter(([_, level]) => level > currentLevel)
+      // Filter out old role keys if we want to force new ones, but for now keep all that are valid AppRole
+      // Maybe filter out 'cbo', 'bde' etc if we want to enforce usage of 'level_X'?
+      // Since we map both, it depends on what we want the dropdown to show.
+      // Ideally we only show 'level_X' keys in the dropdown for normalized UI? 
+      // But let's show ALL valid roles that have a label. 
+      // To strictly show 1-20, we should filter keys starting with 'level_' OR 'company'/'company_subadmin'.
+      // But let's keep it simple: everything in ROLE_LEVELS.
+      .sort((a, b) => a[1] - b[1])
       .map(([role]) => role);
   };
 
@@ -273,6 +360,7 @@ export function useTeam() {
     setManager,
     getRoleLabel,
     getAssignableRoles,
-    refetch: fetchTeam
+    refetch: fetchTeam,
+    roleLabels
   };
 }

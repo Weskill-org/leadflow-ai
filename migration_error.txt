@@ -1,0 +1,15 @@
+Initialising login role...
+Connecting to remote database...
+Do you want to push these migrations to the remote database?
+ • 20260113014121_create_company_hierarchies.sql
+
+ [Y/n] y
+Applying migration 20260113014121_create_company_hierarchies.sql...
+NOTICE (00000): trigger "on_company_created_hierarchy" for relation "public.companies" does not exist, skipping
+ERROR: unsafe use of new value "level_3" of enum type app_role (SQLSTATE 55P04)
+At statement: 10                                                               
+-- Migrate existing user roles to new level_X roles                            
+-- company (Level 1) and company_subadmin (Level 2) remain unchanged in DB     
+UPDATE public.user_roles SET role = 'level_3' WHERE role = 'cbo'               
+                                    ^                                          
+Try rerunning the command with --debug to troubleshoot the error.
