@@ -11,6 +11,8 @@ interface Company {
   total_licenses: number;
   used_licenses: number;
   is_active: boolean;
+  custom_leads_table?: string | null;
+  admin_id: string;
 }
 
 export function useCompany() {
@@ -51,9 +53,15 @@ export function useCompany() {
         .single();
 
       if (error) {
-        console.error('Error fetching company:', error);
+        console.error('[useCompany] Error fetching company:', error);
         setCompany(null);
       } else {
+        console.log('[useCompany] Fetched company data:', {
+          id: companyData.id,
+          name: companyData.name,
+          custom_leads_table: companyData.custom_leads_table,
+          admin_id: companyData.admin_id
+        });
         setCompany(companyData);
         setIsCompanyAdmin(companyData.admin_id === user?.id);
       }

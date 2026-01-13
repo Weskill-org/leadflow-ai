@@ -21,6 +21,7 @@ import { AddLeadDialog } from '@/components/leads/AddLeadDialog';
 import { UploadLeadsDialog } from '@/components/leads/UploadLeadsDialog';
 import { AssignLeadsDialog } from '@/components/leads/AssignLeadsDialog';
 import { LeadsTable } from '@/components/leads/LeadsTable';
+import { useLeadsTable } from '@/hooks/useLeadsTable';
 
 
 
@@ -29,12 +30,12 @@ export default function AllLeads() {
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [selectedOwners, setSelectedOwners] = useState<Set<string>>(new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
-  const [selectedColleges, setSelectedColleges] = useState<Set<string>>(new Set());
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const pageSize = 25;
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const { tableName } = useLeadsTable();
 
   // Fetch filter options
   const { data: filterOptions } = useQuery({
@@ -45,18 +46,11 @@ export default function AllLeads() {
         .select('id, full_name')
         .not('full_name', 'is', null);
 
-      // For colleges and programs, we might want to fetch distinct values from leads table
-      // or use the products table.
-      // Let's use products table for products.
       const { data: products } = await supabase.from('products').select('name').order('name');
-
-      const { data: leadsData } = await supabase.from('leads').select('college');
-      const uniqueColleges = Array.from(new Set(leadsData?.map(l => l.college).filter(Boolean)));
 
       return {
         owners: owners?.map(o => ({ label: o.full_name || 'Unknown', value: o.id })) || [],
         products: Array.from(new Set(((products as any[]) || []).map(p => p.name))).map(name => ({ label: name, value: name })),
-        colleges: uniqueColleges.map(c => ({ label: c!, value: c! })),
         statuses: Constants.public.Enums.lead_status.map(s => ({ label: s.replace('_', ' '), value: s }))
       };
     }
@@ -82,7 +76,7 @@ export default function AllLeads() {
 
     try {
       const { error } = await supabase
-        .from('leads')
+        .from(tableName as any)
         .delete()
         .in('id', Array.from(selectedLeads));
 
@@ -169,25 +163,18 @@ export default function AllLeads() {
                     onSelectionChange={setSelectedStatuses}
                   />
                   <MultiSelectFilter
-                    title="College"
-                    options={filterOptions.colleges}
-                    selectedValues={selectedColleges}
-                    onSelectionChange={setSelectedColleges}
-                  />
-                  <MultiSelectFilter
                     title="Product"
                     options={filterOptions.products}
                     selectedValues={selectedProducts}
                     onSelectionChange={setSelectedProducts}
                   />
-                  {(selectedOwners.size > 0 || selectedStatuses.size > 0 || selectedColleges.size > 0 || selectedProducts.size > 0) && (
+                  {(selectedOwners.size > 0 || selectedStatuses.size > 0 || selectedProducts.size > 0) && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => {
                         setSelectedOwners(new Set());
                         setSelectedStatuses(new Set());
-                        setSelectedColleges(new Set());
                         setSelectedProducts(new Set());
                       }}
                       className="h-8 px-2 lg:px-3"

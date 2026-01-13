@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { useLeadsTable } from '@/hooks/useLeadsTable';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface AssignLeadsDialogProps {
@@ -25,6 +26,7 @@ export function AssignLeadsDialog({ open, onOpenChange, selectedLeadIds, onSucce
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string>('');
     const { user } = useAuth();
+    const { tableName } = useLeadsTable();
     const queryClient = useQueryClient();
 
     useEffect(() => {
@@ -59,7 +61,7 @@ export function AssignLeadsDialog({ open, onOpenChange, selectedLeadIds, onSucce
         setLoading(true);
         try {
             const { error } = await supabase
-                .from('leads')
+                .from(tableName as any)
                 .update({ sales_owner_id: selectedUserId })
                 .in('id', selectedLeadIds);
 

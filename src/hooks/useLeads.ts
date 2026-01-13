@@ -17,22 +17,29 @@ interface UseLeadsOptions {
   pageSize?: number;
 }
 
+import { useLeadsTable } from './useLeadsTable';
+
 export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseLeadsOptions = {}) {
   const queryClient = useQueryClient();
+  const { tableName, companyId, loading: tableLoading } = useLeadsTable();
 
-  // Set up real-time subscription
+  // Set up real-time subscription (re-subscribe when table changes)
   useEffect(() => {
+    if (!tableName) return;
+
+    console.log('[useLeads] Setting up realtime subscription for table:', tableName);
+
     const channel = supabase
-      .channel('leads-realtime')
+      .channel(`leads-realtime-${tableName}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'leads'
+          table: tableName
         },
         (payload) => {
-          console.log('Lead change received:', payload);
+          console.log('[useLeads] Realtime change received:', { table: tableName, event: payload.eventType });
           // Invalidate and refetch leads query
           queryClient.invalidateQueries({ queryKey: ['leads'] });
         }
@@ -40,18 +47,40 @@ export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseL
       .subscribe();
 
     return () => {
+      console.log('[useLeads] Cleaning up realtime subscription for table:', tableName);
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, tableName]);
 
   return useQuery({
-    queryKey: ['leads', search, statusFilter, page, pageSize],
+    queryKey: ['leads', search, statusFilter, page, pageSize, tableName, companyId],
     queryFn: async (): Promise<{ leads: Lead[]; count: number }> => {
+      console.log('[useLeads] Querying table:', { tableName, companyId, statusFilter, search, page });
+      // Build select query with dynamic foreign key reference
+      // For custom tables, we can't use named FK joins because CREATE TABLE LIKE doesn't copy FK constraints
+      // We'll just select all fields without joins for custom tables
+      const selectQuery = tableName === 'leads'
+        ? '*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)'
+        : '*';
+
       let query = supabase
-        .from('leads')
-        .select('*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)', { count: 'exact' })
+        .from(tableName as any)
+        .select(selectQuery, { count: 'exact' })
         .order('created_at', { ascending: false })
         .order('id', { ascending: false });
+
+      // CRITICAL: Enforce company isolation for shared table
+      // Custom tables are already isolated (contain only one company's data)
+      if (tableName === 'leads') {
+        if (!companyId) {
+          console.warn('[useLeads] Security Guard: companyId missing for shared table. Aborting query to prevent data leakage.');
+          return { leads: [], count: 0 };
+        }
+        console.log('[useLeads] Applying strict company_id filter:', companyId);
+        query = query.eq('company_id', companyId);
+      } else {
+        console.log('[useLeads] Custom table detected, skipping company_id filter (Implicit Isolation)');
+      }
 
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter as LeadStatus);
@@ -70,12 +99,16 @@ export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseL
       const { data, error, count } = await query;
 
       if (error) {
+        console.error('[useLeads] Query error:', error);
         throw error;
       }
 
-      return { leads: data || [], count: count || 0 };
+      console.log('[useLeads] Query successful:', { count, rowsReturned: data?.length });
+
+      return { leads: (data as unknown as Lead[]) || [], count: count || 0 };
     },
     placeholderData: (previousData) => previousData,
+    enabled: !tableLoading,
   });
 }
 
@@ -83,18 +116,19 @@ import { automationService } from '@/services/automationService';
 
 export function useUpdateLead() {
   const queryClient = useQueryClient();
+  const { tableName } = useLeadsTable();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<Lead>) => {
       const { data, error } = await supabase
-        .from('leads')
+        .from(tableName as any)
         .update(updates)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as Lead;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
@@ -108,17 +142,18 @@ export function useUpdateLead() {
 
 export function useCreateLead() {
   const queryClient = useQueryClient();
+  const { tableName } = useLeadsTable();
 
   return useMutation({
     mutationFn: async (newLead: TablesInsert<'leads'>) => {
       const { data, error } = await supabase
-        .from('leads')
+        .from(tableName as any)
         .insert(newLead)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as Lead;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
@@ -130,11 +165,12 @@ export function useCreateLead() {
 
 export function useCreateLeads() {
   const queryClient = useQueryClient();
+  const { tableName } = useLeadsTable();
 
   return useMutation({
     mutationFn: async (newLeads: TablesInsert<'leads'>[]) => {
       const { data, error } = await supabase
-        .from('leads')
+        .from(tableName as any)
         .insert(newLeads)
         .select();
 

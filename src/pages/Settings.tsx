@@ -6,11 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Bell, Shield, User, Globe, Loader2 } from 'lucide-react';
+import { Bell, Shield, User, Globe, Loader2, Database } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import ManageLeadAttributes from './ManageLeadAttributes';
+import { useCompany } from '@/hooks/useCompany';
 
 export default function Settings() {
     const { user } = useAuth();
@@ -25,6 +27,7 @@ export default function Settings() {
         password: '',
         confirmPassword: ''
     });
+    const { isCompanyAdmin } = useCompany();
 
     const { data: profile, isLoading } = useQuery({
         queryKey: ['profile', user?.id],
@@ -172,6 +175,11 @@ export default function Settings() {
                         <TabsTrigger value="general" className="flex items-center gap-2">
                             <Globe className="h-4 w-4" /> General
                         </TabsTrigger>
+                        {isCompanyAdmin && (
+                            <TabsTrigger value="attributes" className="flex items-center gap-2">
+                                <Database className="h-4 w-4" /> Lead Attributes
+                            </TabsTrigger>
+                        )}
                     </TabsList>
 
                     <TabsContent value="profile">
@@ -306,6 +314,12 @@ export default function Settings() {
                             </CardContent>
                         </Card>
                     </TabsContent>
+
+                    {isCompanyAdmin && (
+                        <TabsContent value="attributes">
+                            <ManageLeadAttributes />
+                        </TabsContent>
+                    )}
                 </Tabs>
             </div>
         </DashboardLayout>

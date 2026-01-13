@@ -32,7 +32,7 @@ export function useLGLinks() {
       setLoading(false);
       return;
     }
-    
+
     try {
       // Fetch links with form info
       const { data: linksData, error: linksError } = await supabase
@@ -42,7 +42,7 @@ export function useLGLinks() {
           form:forms(id, name)
         `)
         .order('created_at', { ascending: false });
-      
+
       if (linksError) {
         console.error('Error fetching LG links:', linksError);
         setLoading(false);
@@ -58,7 +58,7 @@ export function useLGLinks() {
             .from('leads')
             .select('status, revenue_received, revenue_projected')
             .eq('lg_link_id', link.id);
-          
+
           const stats = leadStats || [];
           return {
             ...link,
@@ -80,9 +80,9 @@ export function useLGLinks() {
 
   const createLink = async (formId: string, caName: string, utmCampaign?: string) => {
     if (!user) return { error: new Error('Not authenticated'), data: null };
-    
+
     const utmSource = caName.toLowerCase().replace(/\s+/g, '_');
-    
+
     try {
       const { data, error } = await supabase
         .from('lg_links' as any)
@@ -99,7 +99,7 @@ export function useLGLinks() {
           form:forms(id, name)
         `)
         .single();
-      
+
       if (!error && data) {
         const newLink = data as unknown as LGLink;
         setLinks(prev => [{
@@ -111,7 +111,7 @@ export function useLGLinks() {
           revenue_projected: 0,
         }, ...prev]);
       }
-      
+
       return { data, error };
     } catch (err) {
       return { data: null, error: err as Error };

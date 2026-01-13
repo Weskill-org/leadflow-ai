@@ -34,13 +34,13 @@ export function LeadsFilters({
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by name, email, phone, college..."
+          placeholder="Search by name, email, phone..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-10 bg-background border-border"
         />
       </div>
-      
+
       <Select value={statusFilter} onValueChange={onStatusFilterChange}>
         <SelectTrigger className="w-full sm:w-[180px] bg-background border-border">
           <Filter className="h-4 w-4 mr-2" />
