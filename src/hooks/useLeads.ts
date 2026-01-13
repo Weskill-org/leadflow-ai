@@ -50,7 +50,8 @@ export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseL
       let query = supabase
         .from('leads')
         .select('*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)', { count: 'exact' })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
 
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter as LeadStatus);
