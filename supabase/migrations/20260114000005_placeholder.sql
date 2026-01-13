@@ -1,0 +1,1 @@
+-- Placeholder to fix broken migration history
