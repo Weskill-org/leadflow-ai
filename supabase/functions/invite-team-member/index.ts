@@ -15,12 +15,19 @@ interface InviteRequest {
 
 const VALID_ROLES = [
   "company", "company_subadmin", "cbo", "vp", "avp",
-  "dgm", "agm", "sm", "tl", "bde", "intern", "ca"
+  "dgm", "agm", "sm", "tl", "bde", "intern", "ca",
+  "level_3", "level_4", "level_5", "level_6", "level_7", "level_8",
+  "level_9", "level_10", "level_11", "level_12", "level_13", "level_14",
+  "level_15", "level_16", "level_17", "level_18", "level_19", "level_20"
 ];
 
 const ROLE_LEVELS: Record<string, number> = {
   company: 1, company_subadmin: 2, cbo: 3, vp: 4, avp: 5,
-  dgm: 6, agm: 7, sm: 8, tl: 9, bde: 10, intern: 11, ca: 12
+  dgm: 6, agm: 7, sm: 8, tl: 9, bde: 10, intern: 11, ca: 12,
+  level_3: 3, level_4: 4, level_5: 5, level_6: 6, level_7: 7, level_8: 8,
+  level_9: 9, level_10: 10, level_11: 11, level_12: 12, level_13: 13,
+  level_14: 14, level_15: 15, level_16: 16, level_17: 17, level_18: 18,
+  level_19: 19, level_20: 20
 };
 
 serve(async (req) => {
@@ -33,10 +40,7 @@ serve(async (req) => {
     // Get and validate authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Missing authorization header");
     }
 
     // Initialize Supabase clients
@@ -56,10 +60,7 @@ serve(async (req) => {
     const { data: { user: requester }, error: userError } = await supabaseAuth.auth.getUser();
     if (userError || !requester) {
       console.error("Auth error:", userError);
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Unauthorized: " + (userError?.message || "User not found"));
     }
 
     // Ensure requester has a profile row (required because profiles.manager_id FK references profiles.id)
@@ -71,10 +72,7 @@ serve(async (req) => {
 
     if (requesterProfileError) {
       console.error("Requester profile fetch error:", requesterProfileError);
-      return new Response(
-        JSON.stringify({ error: "Could not verify your profile" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Could not verify your profile: " + requesterProfileError.message);
     }
 
     let requesterCompanyId: string | null = requesterProfile?.company_id ?? null;
@@ -95,10 +93,7 @@ serve(async (req) => {
     }
 
     if (!requesterCompanyId) {
-      return new Response(
-        JSON.stringify({ error: "Your account is not linked to a company." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Your account is not linked to a company.");
     }
 
     // Create the requester's profile row if missing (prevents FK failure when inviting someone)
@@ -117,56 +112,39 @@ serve(async (req) => {
 
       if (ensureRequesterProfileError) {
         console.error("Ensure requester profile error:", ensureRequesterProfileError);
-        return new Response(
-          JSON.stringify({ error: "Could not create your profile record" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        throw new Error("Could not create your profile record: " + ensureRequesterProfileError.message);
       }
     }
 
     // Parse and validate request body
     const body: InviteRequest = await req.json();
+    console.log("Invite request received:", JSON.stringify(body));
     const { email, fullName, password, role } = body;
 
     // Input validation
     if (!email || !fullName || !password || !role) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Missing required fields");
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid email format" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Invalid email format");
     }
 
     // Validate full name length
     if (fullName.length > 100) {
-      return new Response(
-        JSON.stringify({ error: "Full name must be less than 100 characters" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Full name must be less than 100 characters");
     }
 
     // Validate password
     if (password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: "Password must be at least 6 characters" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Password must be at least 6 characters");
     }
 
     // Validate role is in allowed list
     if (!VALID_ROLES.includes(role)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid role" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Invalid role");
     }
 
     // Get requester's role
@@ -178,10 +156,7 @@ serve(async (req) => {
 
     if (roleError || !requesterRoleData) {
       console.error("Role fetch error:", roleError);
-      return new Response(
-        JSON.stringify({ error: "Could not verify your role" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Could not verify your role");
     }
 
     const requesterLevel = ROLE_LEVELS[requesterRoleData.role] || 99;
@@ -190,11 +165,10 @@ serve(async (req) => {
     // Server-side validation: requester can only assign roles below their level
     if (requesterLevel >= targetLevel) {
       console.log(`Permission denied: requester level ${requesterLevel} cannot assign level ${targetLevel}`);
-      return new Response(
-        JSON.stringify({ error: "You cannot assign this role. You can only assign roles below your level." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("You cannot assign this role. You can only assign roles below your level.");
     }
+
+    console.log(`Creating user ${email} with role ${role} requested by ${requester.email}`);
 
     // Create the user with admin client
     const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
@@ -209,18 +183,12 @@ serve(async (req) => {
 
     if (signUpError) {
       console.error("Signup error:", signUpError);
-      return new Response(
-        JSON.stringify({ error: signUpError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error(signUpError.message);
     }
 
     const newUserId = signUpData.user?.id;
     if (!newUserId) {
-      return new Response(
-        JSON.stringify({ error: "Failed to create user" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Failed to create user (no ID returned)");
     }
 
     // Ensure the new user is added to profiles with correct manager_id + company_id
@@ -241,10 +209,7 @@ serve(async (req) => {
       console.error("Profile upsert error:", upsertProfileError);
       // Rollback user creation to avoid orphaned auth users
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
-      return new Response(
-        JSON.stringify({ error: "Failed to create profile for new user" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Failed to create profile for new user: " + upsertProfileError.message);
     }
 
     // Set role (keep a single role row per user)
@@ -256,10 +221,7 @@ serve(async (req) => {
     if (deleteRolesError) {
       console.error("Role cleanup error:", deleteRolesError);
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
-      return new Response(
-        JSON.stringify({ error: "Failed to set role for new user" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Failed to set role for new user (cleanup failed)");
     }
 
     const { error: insertRoleError } = await supabaseAdmin
@@ -269,27 +231,24 @@ serve(async (req) => {
     if (insertRoleError) {
       console.error("Role insert error:", insertRoleError);
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
-      return new Response(
-        JSON.stringify({ error: "Failed to set role for new user" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Failed to set role for new user (insert failed)");
     }
 
     console.log(`Successfully invited ${email} as ${role} by ${requester.email}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         userId: newUserId,
         message: `${fullName} has been added successfully.`
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Unexpected error:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: error.message || "Internal server error" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

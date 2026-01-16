@@ -18,7 +18,13 @@ const inviteSchema = z.object({
     email: z.string().trim().email({ message: "Please enter a valid email address" }).max(255, { message: "Email must be less than 255 characters" }),
     fullName: z.string().trim().min(1, { message: "Full name is required" }).max(100, { message: "Full name must be less than 100 characters" }).regex(/^[a-zA-Z\s'-]+$/, { message: "Full name can only contain letters, spaces, hyphens, and apostrophes" }),
     password: z.string().min(6, { message: "Password must be at least 6 characters" }).max(72, { message: "Password must be less than 72 characters" }),
-    role: z.enum(["company", "company_subadmin", "cbo", "vp", "avp", "dgm", "agm", "sm", "tl", "bde", "intern", "ca"])
+    role: z.enum([
+        "company", "company_subadmin", "cbo", "vp", "avp",
+        "dgm", "agm", "sm", "tl", "bde", "intern", "ca",
+        "level_3", "level_4", "level_5", "level_6", "level_7", "level_8",
+        "level_9", "level_10", "level_11", "level_12", "level_13", "level_14",
+        "level_15", "level_16", "level_17", "level_18", "level_19", "level_20"
+    ])
 });
 import {
     Dialog,
@@ -64,7 +70,7 @@ export default function Team() {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteFullName, setInviteFullName] = useState('');
     const [invitePassword, setInvitePassword] = useState('');
-    const [inviteRole, setInviteRole] = useState<AppRole>('bde');
+    const [inviteRole, setInviteRole] = useState<AppRole>('level_10');
     const [isInviting, setIsInviting] = useState(false);
 
     // Hierarchy Edit State
@@ -161,9 +167,11 @@ export default function Team() {
             return;
         }
 
+        console.log("Starting invite process...", { email: inviteEmail, role: inviteRole });
         setIsInviting(true);
 
         try {
+            console.log("Invoking edge function 'invite-team-member'...");
             // Call secure edge function for team member invitation
             const { data, error } = await supabase.functions.invoke('invite-team-member', {
                 body: {
@@ -174,11 +182,24 @@ export default function Team() {
                 }
             });
 
+            console.log("Edge function returned:", { data, error });
+
             if (error) {
-                throw new Error(error.message || "Failed to invite member");
+                console.error("Invoke error details:", error);
+                // Extract error message if it's buried in JSON string
+                let msg = error.message || "Failed to invite member";
+                try {
+                    if (error && typeof error === 'object' && 'context' in error) {
+                        // Supabase functions error might be in context
+                        console.error("Error context:", (error as any).context);
+                    }
+                } catch (e) { console.error("Error parsing error context", e); }
+
+                throw new Error(msg);
             }
 
             if (data?.error) {
+                console.error("Data error details:", data.error);
                 throw new Error(data.error);
             }
 
@@ -190,18 +211,20 @@ export default function Team() {
             setInviteEmail('');
             setInviteFullName('');
             setInvitePassword('');
-            setInviteRole('bde');
+            setInviteRole('level_10');
             // Refetch team after a short delay
             setTimeout(() => refetch(), 1500);
         } catch (err: any) {
+            console.error("Invite member error caught:", err);
             toast({
                 title: "Error",
                 description: err.message || "Failed to invite member.",
                 variant: "destructive"
             });
+        } finally {
+            console.log("Setting isInviting to false");
+            setIsInviting(false);
         }
-
-        setIsInviting(false);
     };
 
     const handlePromote = async () => {
@@ -518,7 +541,7 @@ export default function Team() {
                 )}
 
                 {/* Manage Member Dialog - Controlled by selectedMember state */}
-                <Dialog open={!!selectedMember && !deleteDialogOpen} onOpenChange={(open) => !open && setSelectedMember(null)}>
+                <Dialog open={!!selectedMember} onOpenChange={(open) => !open && setSelectedMember(null)}>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Manage {members.find(m => m.id === selectedMember)?.full_name}</DialogTitle>
@@ -629,7 +652,10 @@ export default function Team() {
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={handleDeleteMember}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleDeleteMember();
+                            }}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}

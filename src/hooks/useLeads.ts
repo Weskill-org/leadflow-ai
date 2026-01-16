@@ -52,7 +52,7 @@ export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseL
     };
   }, [queryClient, tableName]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['leads', search, statusFilter, page, pageSize, tableName, companyId],
     queryFn: async (): Promise<{ leads: Lead[]; count: number }> => {
       console.log('[useLeads] Querying table:', { tableName, companyId, statusFilter, search, page });
@@ -110,6 +110,11 @@ export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseL
     placeholderData: (previousData) => previousData,
     enabled: !tableLoading,
   });
+
+  return {
+    ...query,
+    isLoading: query.isLoading || tableLoading
+  };
 }
 
 import { automationService } from '@/services/automationService';

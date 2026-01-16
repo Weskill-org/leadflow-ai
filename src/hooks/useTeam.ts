@@ -321,15 +321,15 @@ export function useTeam() {
   const getAssignableRoles = (): AppRole[] => {
     if (!currentUserRole) return [];
     const currentLevel = ROLE_LEVELS[currentUserRole];
+
+    // Legacy keys to filter out from dropdowns to avoid duplicates
+    const legacyKeys = new Set(['cbo', 'vp', 'avp', 'dgm', 'agm', 'sm', 'tl', 'bde', 'intern', 'ca']);
+
     return (Object.entries(ROLE_LEVELS) as [AppRole, number][])
-      .filter(([_, level]) => level > currentLevel)
-      // Filter out old role keys if we want to force new ones, but for now keep all that are valid AppRole
-      // Maybe filter out 'cbo', 'bde' etc if we want to enforce usage of 'level_X'?
-      // Since we map both, it depends on what we want the dropdown to show.
-      // Ideally we only show 'level_X' keys in the dropdown for normalized UI? 
-      // But let's show ALL valid roles that have a label. 
-      // To strictly show 1-20, we should filter keys starting with 'level_' OR 'company'/'company_subadmin'.
-      // But let's keep it simple: everything in ROLE_LEVELS.
+      .filter(([role, level]) => {
+        if (legacyKeys.has(role)) return false;
+        return level > currentLevel;
+      })
       .sort((a, b) => a[1] - b[1])
       .map(([role]) => role);
   };

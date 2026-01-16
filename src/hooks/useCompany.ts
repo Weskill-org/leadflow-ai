@@ -31,6 +31,7 @@ export function useCompany() {
   }, [user]);
 
   const fetchCompany = async () => {
+    setLoading(true);
     try {
       // Get user's profile with company_id
       const { data: profile } = await supabase
