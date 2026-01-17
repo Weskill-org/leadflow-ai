@@ -14,6 +14,8 @@ export interface TeamMember {
   manager_id: string | null;
   created_at: string;
   role: AppRole;
+  /** UI-only flag used for optimistic invitations */
+  is_pending?: boolean;
   manager?: {
     id: string;
     full_name: string | null;
@@ -370,6 +372,14 @@ export function useTeam() {
     setMembers(prev => [...prev, newMember]);
   };
 
+  const removeMemberOptimistic = (memberId: string) => {
+    setMembers(prev => prev.filter(m => m.id !== memberId));
+  };
+
+  const replaceMemberOptimistic = (tempId: string, member: TeamMember) => {
+    setMembers(prev => prev.map(m => (m.id === tempId ? member : m)));
+  };
+
   return {
     members,
     loading,
@@ -381,6 +391,8 @@ export function useTeam() {
     getAssignableRoles,
     refetch: fetchTeam,
     roleLabels,
-    addMemberOptimistic
+    addMemberOptimistic,
+    removeMemberOptimistic,
+    replaceMemberOptimistic,
   };
 }
