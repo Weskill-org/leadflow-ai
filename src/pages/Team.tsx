@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail, Trash2, Lock, Pencil } from 'lucide-react';
 import { useTeam, AppRole } from '@/hooks/useTeam';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
@@ -53,7 +54,22 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function Team() {
-    const { members, loading, currentUserRole, promoteUser, setManager, deleteMember, getRoleLabel, getAssignableRoles, refetch, addMemberOptimistic } = useTeam();
+    const { user } = useAuth();
+    const {
+        members,
+        loading,
+        currentUserRole,
+        promoteUser,
+        setManager,
+        deleteMember,
+        getRoleLabel,
+        getAssignableRoles,
+        refetch,
+        addMemberOptimistic,
+        removeMemberOptimistic,
+        replaceMemberOptimistic,
+        roleLabels,
+    } = useTeam();
     const { company } = useCompany();
     const navigate = useNavigate();
     const { toast } = useToast();
@@ -77,7 +93,6 @@ export default function Team() {
     const [editHierarchyOpen, setEditHierarchyOpen] = useState(false);
     const [hierarchyForm, setHierarchyForm] = useState<Record<string, string>>({});
     const [isSavingHierarchy, setIsSavingHierarchy] = useState(false);
-    const { roleLabels } = useTeam();
 
     const openEditHierarchy = () => {
         // Initialize form with current labels
@@ -167,15 +182,40 @@ export default function Team() {
             return;
         }
 
+        const email = validationResult.data.email;
+        const fullName = validationResult.data.fullName;
+        const password = validationResult.data.password;
+        const role = validationResult.data.role as AppRole;
+
+        // Add immediately to UI (optimistic) and close dialog so it feels instant.
+        const tempId = `pending-${Date.now()}`;
+        addMemberOptimistic({
+            id: tempId,
+            email,
+            full_name: fullName,
+            phone: null,
+            avatar_url: null,
+            manager_id: null,
+            created_at: new Date().toISOString(),
+            role,
+            is_pending: true,
+        });
+
+        setInviteDialogOpen(false);
+        setInviteEmail('');
+        setInviteFullName('');
+        setInvitePassword('');
+        setInviteRole('level_10');
+
         setIsInviting(true);
 
         try {
             const { data, error } = await supabase.functions.invoke('invite-team-member', {
                 body: {
-                    email: validationResult.data.email,
-                    fullName: validationResult.data.fullName,
-                    password: validationResult.data.password,
-                    role: validationResult.data.role
+                    email,
+                    fullName,
+                    password,
+                    role,
                 }
             });
 
@@ -195,30 +235,30 @@ export default function Team() {
 
             if (data?.error) throw new Error(data.error);
 
-            // Optimistic update - add new member immediately to UI
-            if (data?.userId) {
-                addMemberOptimistic({
-                    id: data.userId,
-                    email: validationResult.data.email,
-                    full_name: validationResult.data.fullName,
-                    phone: null,
-                    avatar_url: null,
-                    manager_id: null,
-                    created_at: new Date().toISOString(),
-                    role: validationResult.data.role as AppRole,
-                });
+            if (!data?.userId) {
+                throw new Error('Invite succeeded but userId was missing.');
             }
+
+            // Replace the optimistic placeholder with the real user.
+            replaceMemberOptimistic(tempId, {
+                id: data.userId,
+                email,
+                full_name: fullName,
+                phone: null,
+                avatar_url: null,
+                manager_id: null,
+                created_at: new Date().toISOString(),
+                role,
+                is_pending: false,
+            });
 
             toast({
                 title: "Success",
-                description: `${inviteFullName} has been added as ${getRoleLabel(inviteRole)}.`,
+                description: `${fullName} has been added as ${getRoleLabel(role)}.`,
             });
-            setInviteDialogOpen(false);
-            setInviteEmail('');
-            setInviteFullName('');
-            setInvitePassword('');
-            setInviteRole('level_10');
         } catch (err: any) {
+            // Rollback optimistic row
+            removeMemberOptimistic(tempId);
             toast({
                 title: "Error",
                 description: err.message || "Failed to invite member.",
@@ -478,7 +518,7 @@ export default function Team() {
                                         <OrgChart
                                             members={members}
                                             currentUserRole={currentUserRole}
-                                            currentUserId={members.find(m => m.id === (supabase.auth.getUser() as any)?.id)?.id} // We might need a better way to get current ID if not in hook
+                                            currentUserId={user?.id}
                                             getRoleLabel={getRoleLabel}
                                             getRoleLevelNum={getRoleLevelNum}
                                             onManage={(member) => {
