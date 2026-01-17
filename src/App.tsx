@@ -24,6 +24,7 @@ import Automations from "./pages/Automations";
 import Integrations from "./pages/Integrations";
 import Settings from "./pages/Settings";
 import Forms from "./pages/Forms";
+import FormResponses from "./pages/FormResponses";
 import FormBuilder from "./pages/FormBuilder";
 import PublicForm from "./pages/PublicForm";
 import ResetPassword from "./pages/ResetPassword";
@@ -58,6 +59,7 @@ const MainDomainRoutes = () => (
     <Route path="/dashboard/integrations" element={<Integrations />} />
     <Route path="/dashboard/settings" element={<Settings />} />
     <Route path="/dashboard/forms" element={<Forms />} />
+    <Route path="/dashboard/forms/:id/responses" element={<FormResponses />} />
     <Route path="/dashboard/forms/new" element={<FormBuilder />} />
     <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
     <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
@@ -91,6 +93,7 @@ const SubdomainRoutes = () => (
       <Route path="/dashboard/integrations" element={<Integrations />} />
       <Route path="/dashboard/settings" element={<Settings />} />
       <Route path="/dashboard/forms" element={<Forms />} />
+      <Route path="/dashboard/forms/:id/responses" element={<FormResponses />} />
       <Route path="/dashboard/forms/new" element={<FormBuilder />} />
       <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
       <Route path="/dashboard/forms/:id" element={<FormBuilder />} />

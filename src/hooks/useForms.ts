@@ -119,15 +119,84 @@ export function useDeleteForm() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('forms')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', id);
 
       if (error) throw error;
+      if (count === 0) {
+        throw new Error('Permission denied or form not found');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['forms'] });
+    },
+  });
+}
+
+import { useLeadsTable } from './useLeadsTable';
+
+export function useFormResponses(formId: string | undefined) {
+  const { tableName, companyId } = useLeadsTable();
+
+  return useQuery({
+    queryKey: ['form-responses', formId, tableName, companyId],
+    queryFn: async () => {
+      if (!formId) return [];
+
+      let query = supabase
+        .from(tableName as any)
+        .select('*')
+        .eq('form_id', formId)
+        .order('created_at', { ascending: false });
+
+      if (tableName === 'leads' && companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!formId,
+  });
+}
+
+export function useFormResponseCounts() {
+  const { tableName, companyId } = useLeadsTable();
+
+  return useQuery({
+    queryKey: ['form-response-counts', tableName, companyId],
+    queryFn: async () => {
+      // For performance in large datasets, we might want to use a more optimized approach
+      // but for now, we'll fetch ID and form_id to aggregate on the client side
+      // or use a direct group by count if we can write a custom RPC function later.
+      // Since standard Supabase client doesn't support "group by" easily without raw SQL or RPC,
+      // and "custom_leads_table" might be dynamic, we'll select form_id only.
+
+      let query = supabase
+        .from(tableName as any)
+        .select('form_id');
+
+      if (tableName === 'leads' && companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Aggregating counts
+      const counts: Record<string, number> = {};
+      data?.forEach((row: any) => {
+        if (row.form_id) {
+          counts[row.form_id] = (counts[row.form_id] || 0) + 1;
+        }
+      });
+
+      return counts;
     },
   });
 }

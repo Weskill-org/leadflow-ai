@@ -4,31 +4,56 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, MoreHorizontal, FileText, Eye, Edit, Trash } from 'lucide-react';
+import { Plus, MoreHorizontal, FileText, Eye, Edit, Trash, AlertCircle } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useForms, useDeleteForm } from '@/hooks/useForms';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useForms, useDeleteForm, useFormResponseCounts } from '@/hooks/useForms';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function Forms() {
     const navigate = useNavigate();
     const { data: forms, isLoading } = useForms();
+    const { data: responseCounts } = useFormResponseCounts();
     const deleteForm = useDeleteForm();
+    const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    const handleDelete = async (id: string) => {
-        if (confirm('Are you sure you want to delete this form?')) {
-            try {
-                await deleteForm.mutateAsync(id);
-                toast.success('Form deleted successfully');
-            } catch (error) {
+    const handleDelete = (id: string) => {
+        setDeleteId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+
+        try {
+            await deleteForm.mutateAsync(deleteId);
+            toast.success('Form deleted successfully');
+        } catch (error: any) {
+            console.error(error);
+            // Check for foreign key constraint violation (Postgres error code 23503)
+            if (error?.message?.includes('foreign key constraint') || error?.code === '23503') {
+                toast.error('Cannot delete form because it has associated responses. Please delete the responses first.');
+            } else if (error?.message) {
+                toast.error(error.message);
+            } else {
                 toast.error('Failed to delete form');
-                console.error(error);
             }
+        } finally {
+            setDeleteId(null);
         }
     };
 
@@ -82,7 +107,9 @@ export default function Forms() {
                                                 <FileText className="h-4 w-4 text-primary" />
                                                 {form.name}
                                             </TableCell>
-                                            <TableCell className="text-right">0</TableCell> {/* Placeholder for responses count */}
+                                            <TableCell className="text-right">
+                                                {responseCounts?.[form.id] || 0}
+                                            </TableCell>
                                             <TableCell className="text-muted-foreground">
                                                 {format(new Date(form.created_at), 'MMM d, yyyy')}
                                             </TableCell>
@@ -105,10 +132,16 @@ export default function Forms() {
                                                         <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}`)}>
                                                             <Edit className="h-4 w-4 mr-2" /> Edit
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}/responses`)}>
                                                             <Eye className="h-4 w-4 mr-2" /> View Responses
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(form.id)}>
+                                                        <DropdownMenuItem
+                                                            className="text-destructive"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDelete(form.id);
+                                                            }}
+                                                        >
                                                             <Trash className="h-4 w-4 mr-2" /> Delete
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
@@ -121,6 +154,23 @@ export default function Forms() {
                         </Table>
                     </CardContent>
                 </Card>
+
+                <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the form and remove it from our servers.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </DashboardLayout>
     );
