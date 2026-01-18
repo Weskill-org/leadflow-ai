@@ -6,6 +6,7 @@ import {
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useCompany } from '@/hooks/useCompany';
 
 const primaryNavItems = [
   { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
@@ -36,6 +37,7 @@ export default function MobileBottomNav() {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { data: role } = useUserRole();
+  const { company } = useCompany();
 
   const filteredAllNavItems = allNavItems.filter(item => {
     if (item.label === 'Integrations') {
@@ -67,12 +69,24 @@ export default function MobileBottomNav() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-                  <span className="text-lg font-bold text-primary-foreground">L³</span>
-                </div>
+                {company?.logo_url ? (
+                  <img
+                    src={company.logo_url}
+                    alt={company.name}
+                    className="w-10 h-10 rounded-lg object-cover bg-white"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+                    <span className="text-lg font-bold text-primary-foreground">
+                      {company?.name?.[0] || 'Up'}
+                    </span>
+                  </div>
+                )}
                 <div>
-                  <h1 className="font-semibold text-foreground">Fastest CRM</h1>
-                  <p className="text-xs text-muted-foreground">AI-Powered CRM</p>
+                  <h1 className="font-semibold text-foreground">
+                    {company?.name || 'Fastest CRM'}
+                  </h1>
+                  <p className="text-xs text-muted-foreground">Fastest CRM by Upmarking.com</p>
                 </div>
               </div>
               <button
