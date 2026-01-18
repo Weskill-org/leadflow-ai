@@ -16,21 +16,24 @@ export default function AutoDialer() {
     const [currentLeadIndex, setCurrentLeadIndex] = useState(0);
     const [callStatus, setCallStatus] = useState<LeadStatus | ''>('');
     const [timer, setTimer] = useState<number | null>(null);
+    const [dialingQueue, setDialingQueue] = useState<any[]>([]); // Store the snapshot of leads
     const phoneLinkRef = useRef<HTMLAnchorElement>(null);
 
     // Fetch only 'new' leads for auto-dialer
     const { data: leadsData, isLoading } = useLeads({ statusFilter: 'new' });
-    const leads = leadsData?.leads || [];
+    const liveLeads = leadsData?.leads || []; // Rename to liveLeads
     const updateLead = useUpdateLead();
 
-    const currentLead = leads?.[currentLeadIndex];
+    // Use queue when dialing, otherwise show live list
+    const displayLeads = isDialing ? dialingQueue : liveLeads;
+    const currentLead = displayLeads?.[currentLeadIndex];
 
-    // Reset index if it goes out of bounds (e.g. after list update)
+    // Reset index if it goes out of bounds (only when NOT dialing)
     useEffect(() => {
-        if (leads && currentLeadIndex >= leads.length && leads.length > 0) {
+        if (!isDialing && liveLeads && currentLeadIndex >= liveLeads.length && liveLeads.length > 0) {
             setCurrentLeadIndex(0);
         }
-    }, [leads, currentLeadIndex]);
+    }, [liveLeads, currentLeadIndex, isDialing]);
 
     // Auto-click phone link when dialing starts or lead changes
     useEffect(() => {
@@ -60,10 +63,12 @@ export default function AutoDialer() {
     }, [timer]);
 
     const startDialing = () => {
-        if (!leads || leads.length === 0) {
+        if (!liveLeads || liveLeads.length === 0) {
             toast.error("No new leads to dial");
             return;
         }
+        // Snapshot the current list to prevent shifting when status updates
+        setDialingQueue([...liveLeads]);
         setIsDialing(true);
         setCurrentLeadIndex(0);
         setCallStatus('');
@@ -73,6 +78,7 @@ export default function AutoDialer() {
     const stopDialing = () => {
         setIsDialing(false);
         setTimer(null);
+        setDialingQueue([]); // Clear queue
     };
 
     const handleCallOutcome = async () => {
@@ -91,10 +97,11 @@ export default function AutoDialer() {
             setCallStatus('');
 
             // Move to next lead
-            if (currentLeadIndex < (leads?.length || 0) - 1) {
+            if (currentLeadIndex < (displayLeads?.length || 0) - 1) {
                 setCurrentLeadIndex(prev => prev + 1);
             } else {
                 setIsDialing(false);
+                setDialingQueue([]);
                 toast.success('Dialing list completed!');
                 setCurrentLeadIndex(0);
             }
@@ -197,9 +204,9 @@ export default function AutoDialer() {
                             ) : (
                                 <div className="text-center py-12">
                                     <p className="text-muted-foreground mb-6">
-                                        {leads?.length || 0} 'New' leads queued for dialing. Click start to begin.
+                                        {liveLeads?.length || 0} 'New' leads queued for dialing. Click start to begin.
                                     </p>
-                                    <Button size="lg" onClick={startDialing} disabled={!leads || leads.length === 0} className="gradient-primary text-lg px-8">
+                                    <Button size="lg" onClick={startDialing} disabled={!liveLeads || liveLeads.length === 0} className="gradient-primary text-lg px-8">
                                         <Play className="mr-2 h-5 w-5" /> Start Auto Dial
                                     </Button>
                                 </div>
@@ -211,11 +218,11 @@ export default function AutoDialer() {
                     <Card className="glass">
                         <CardHeader>
                             <CardTitle>Call Queue</CardTitle>
-                            <CardDescription>{leads?.length || 0} leads remaining</CardDescription>
+                            <CardDescription>{displayLeads?.length || 0} leads remaining</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4 max-h-[500px] overflow-y-auto">
-                                {leads?.map((lead, index) => (
+                                {displayLeads?.map((lead, index) => (
                                     <div
                                         key={lead.id}
                                         className={`p-4 rounded-lg border ${index === currentLeadIndex && isDialing
@@ -234,7 +241,7 @@ export default function AutoDialer() {
                                         </div>
                                     </div>
                                 ))}
-                                {(!leads || leads.length === 0) && (
+                                {(!displayLeads || displayLeads.length === 0) && (
                                     <div className="text-center text-muted-foreground py-4">
                                         No new leads found.
                                     </div>
