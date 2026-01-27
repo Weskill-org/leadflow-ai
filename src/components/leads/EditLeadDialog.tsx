@@ -34,12 +34,14 @@ import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/types';
 
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+
 const formSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     email: z.string().email('Invalid email address').optional().or(z.literal('')),
     phone: z.string().min(10, 'Phone number must be at least 10 digits').optional().or(z.literal('')),
     college: z.string().optional(),
-    status: z.enum(Constants.public.Enums.lead_status as unknown as [string, ...string[]]),
+    status: z.string(),
     lead_source: z.string().optional(),
     product_category: z.string().optional(),
     product_purchased: z.string().optional(),
@@ -54,6 +56,7 @@ interface EditLeadDialogProps {
 export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps) {
     const updateLead = useUpdateLead();
     const { products } = useProducts();
+    const { statuses } = useLeadStatuses();
 
     // Get unique categories
     const categories = Array.from(new Set(products?.map(p => p.category) || [])).sort();
@@ -205,9 +208,9 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {Constants.public.Enums.lead_status.map((status) => (
-                                                <SelectItem key={status} value={status} className="capitalize" disabled={status === 'paid'}>
-                                                    {status.replace('_', ' ')}
+                                            {statuses.map((status) => (
+                                                <SelectItem key={status.id} value={status.value} className="capitalize">
+                                                    {status.label}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>

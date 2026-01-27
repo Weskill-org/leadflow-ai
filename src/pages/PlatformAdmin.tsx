@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { 
+import {
   Building2, Users, Search, Plus, Wallet, Gift, Tag,
   Loader2, ArrowLeft, CheckCircle, XCircle, Eye, RefreshCw,
   Calendar, Clock, DollarSign, BarChart3, Download, Trash2, Edit
@@ -95,7 +95,7 @@ export default function PlatformAdmin() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalCompanies: 0,
@@ -109,12 +109,12 @@ export default function PlatformAdmin() {
   });
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [giftCards, setGiftCards] = useState<GiftCard[]>([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [processing, setProcessing] = useState(false);
-  
+
   // Dialog states
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [addCreditsOpen, setAddCreditsOpen] = useState(false);
@@ -122,21 +122,21 @@ export default function PlatformAdmin() {
   const [addLicensesOpen, setAddLicensesOpen] = useState(false);
   const [companyDetailsOpen, setCompanyDetailsOpen] = useState(false);
   const [companyDetails, setCompanyDetails] = useState<any>(null);
-  
+
   // Form states
   const [creditsAmount, setCreditsAmount] = useState('1000');
   const [creditsDescription, setCreditsDescription] = useState('');
   const [licensesToAdd, setLicensesToAdd] = useState(1);
   const [newSubDate, setNewSubDate] = useState('');
   const [newSubStatus, setNewSubStatus] = useState('active');
-  
+
   // Discount code form
   const [newDiscountCode, setNewDiscountCode] = useState('');
   const [newDiscountPercentage, setNewDiscountPercentage] = useState('10');
   const [newDiscountUses, setNewDiscountUses] = useState('10');
   const [newDiscountExpiry, setNewDiscountExpiry] = useState('');
   const [createDiscountOpen, setCreateDiscountOpen] = useState(false);
-  
+
   // Gift card form
   const [newGiftCode, setNewGiftCode] = useState('');
   const [newGiftAmount, setNewGiftAmount] = useState('1000');
@@ -313,7 +313,7 @@ export default function PlatformAdmin() {
 
   const handleAddLicenses = async () => {
     if (!selectedCompany || licensesToAdd < 1) return;
-    
+
     setProcessing(true);
     try {
       const { error } = await supabase.rpc('add_company_licenses', {
@@ -503,7 +503,7 @@ export default function PlatformAdmin() {
       if (data?.error) throw new Error(data.error);
 
       toast({ title: 'Success', description: data.message });
-      
+
       // Offer download
       if (data.codes) {
         const csv = 'Code,Amount\n' + data.codes.map((c: string) => `${c},${newGiftAmount}`).join('\n');
@@ -514,7 +514,7 @@ export default function PlatformAdmin() {
         a.download = `gift_cards_${Date.now()}.csv`;
         a.click();
       }
-      
+
       setBulkGiftOpen(false);
       setNewGiftAmount('1000');
       setBulkGiftCount('10');
@@ -734,12 +734,12 @@ export default function PlatformAdmin() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
-                            <Badge 
+                            <Badge
                               variant="outline"
                               className={
                                 company.subscription_status === 'active' ? 'border-green-500 text-green-500' :
-                                company.subscription_status === 'past_due' ? 'border-amber-500 text-amber-500' :
-                                'border-muted-foreground'
+                                  company.subscription_status === 'past_due' ? 'border-amber-500 text-amber-500' :
+                                    'border-muted-foreground'
                               }
                             >
                               {company.subscription_status || 'None'}
@@ -752,7 +752,7 @@ export default function PlatformAdmin() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge 
+                          <Badge
                             variant={company.is_active ? 'default' : 'destructive'}
                             className={company.is_active ? 'bg-green-500/20 text-green-500' : ''}
                           >
@@ -795,7 +795,7 @@ export default function PlatformAdmin() {
                                 <Calendar className="h-4 w-4 mr-2" />
                                 Edit Subscription
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleToggleActive(company)}
                                 className={company.is_active ? 'text-destructive' : 'text-green-500'}
                               >
@@ -965,16 +965,16 @@ export default function PlatformAdmin() {
                         </TableCell>
                         <TableCell className="font-medium">₹{card.amount.toLocaleString()}</TableCell>
                         <TableCell>
-                          <Badge 
+                          <Badge
                             variant={
                               card.is_redeemed ? 'secondary' :
-                              !card.active ? 'destructive' :
-                              'default'
+                                !card.active ? 'destructive' :
+                                  'default'
                             }
                             className={
                               card.is_redeemed ? '' :
-                              !card.active ? '' :
-                              'bg-green-500/20 text-green-500'
+                                !card.active ? '' :
+                                  'bg-green-500/20 text-green-500'
                             }
                           >
                             {card.is_redeemed ? 'Redeemed' : card.active ? 'Active' : 'Inactive'}

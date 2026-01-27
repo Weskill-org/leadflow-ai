@@ -71,10 +71,25 @@ export default function AllLeads() {
         .eq('company_id', company.id)
         .order('name');
 
+      const { data: statusesData } = await (supabase
+        .from('company_lead_statuses' as any)
+        .select('label, value, category, order_index')
+        .eq('company_id', company.id)
+        .order('order_index'));
+
+      // Add default if no custom statuses found (fallback safe)
+      const statuses = statusesData && statusesData.length > 0
+        ? statusesData.map((s: any) => ({
+          label: s.label,
+          value: s.value,
+          group: s.category
+        }))
+        : Constants.public.Enums.lead_status.map(s => ({ label: s.replace('_', ' '), value: s, group: 'System' }));
+
       return {
         owners: activeOwners.map(o => ({ label: o.full_name || 'Unknown', value: o.id })),
         products: Array.from(new Set(((products as any[]) || []).map(p => p.name))).map(name => ({ label: name, value: name })),
-        statuses: Constants.public.Enums.lead_status.map(s => ({ label: s.replace('_', ' '), value: s }))
+        statuses: statuses
       };
     },
     enabled: !!company?.id

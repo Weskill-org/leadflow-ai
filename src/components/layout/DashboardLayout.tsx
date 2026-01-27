@@ -65,6 +65,10 @@ const navItems = [{
   label: 'Manage Company',
   path: '/dashboard/company'
 }, {
+  icon: Package,
+  label: 'Statuses',
+  path: '/dashboard/statuses'
+}, {
   icon: Settings,
   label: 'Settings',
   path: '/dashboard/settings'
@@ -103,6 +107,10 @@ export default function DashboardLayout({
       return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
     }
     if (item.label === 'Manage Company') {
+      return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
+    }
+    if (item.label === 'Statuses') {
+      // Only admins or subadmins of a company should see this
       return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
     }
     return true;

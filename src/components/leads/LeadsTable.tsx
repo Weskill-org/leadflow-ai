@@ -32,12 +32,13 @@ import {
 import { useUpdateLead } from '@/hooks/useLeads';
 import { useProducts } from '@/hooks/useProducts';
 import { useUserRole, isRoleAllowedToMarkPaid } from '@/hooks/useUserRole';
-import { Constants } from '@/integrations/supabase/types';
+
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { EditLeadDialog } from './EditLeadDialog';
 import { LeadDetailsDialog } from './LeadDetailsDialog';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 
 type Lead = Tables<'leads'> & {
   sales_owner?: {
@@ -53,15 +54,7 @@ interface LeadsTableProps {
   owners?: { label: string; value: string }[];
 }
 
-const statusColors: Record<string, string> = {
-  'new': 'bg-blue-500/10 text-blue-500',
-  'interested': 'bg-yellow-500/10 text-yellow-500',
-  'paid': 'bg-green-500/10 text-green-500',
-  'follow_up': 'bg-purple-500/10 text-purple-500',
-  'dnd': 'bg-red-500/10 text-red-500',
-  'not_interested': 'bg-gray-500/10 text-gray-500',
-  'rnr': 'bg-orange-500/10 text-orange-500',
-};
+
 
 export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, owners = [] }: LeadsTableProps) {
   const { products } = useProducts();
@@ -69,6 +62,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
   const { data: userRole } = useUserRole();
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [viewingLead, setViewingLead] = useState<Lead | null>(null);
+  const { statuses, getStatusColor } = useLeadStatuses();
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
@@ -280,18 +274,20 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
                     defaultValue={lead.status}
                     onValueChange={(value) => handleStatusChange(lead.id, value)}
                   >
-                    <SelectTrigger className={`w-[140px] h-8 ${statusColors[lead.status] || 'bg-secondary'}`}>
+                    <SelectTrigger
+                      className="w-[140px] h-8 text-white border-0"
+                      style={{ backgroundColor: getStatusColor(lead.status) }}
+                    >
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Constants.public.Enums.lead_status.map((status) => (
+                      {statuses.map((status) => (
                         <SelectItem
-                          key={status}
-                          value={status}
+                          key={status.id}
+                          value={status.value}
                           className="capitalize"
-                          disabled={status === 'paid'}
                         >
-                          {status.replace('_', ' ')}
+                          {status.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -387,14 +383,13 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
                         <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
                         <DropdownMenuSubContent>
                           <DropdownMenuRadioGroup value={lead.status} onValueChange={(value) => handleStatusChange(lead.id, value)}>
-                            {Constants.public.Enums.lead_status.map((status) => (
+                            {statuses.map((status) => (
                               <DropdownMenuRadioItem
-                                key={status}
-                                value={status}
+                                key={status.id}
+                                value={status.value}
                                 className="capitalize"
-                                disabled={status === 'paid'}
                               >
-                                {status.replace('_', ' ')}
+                                {status.label}
                               </DropdownMenuRadioItem>
                             ))}
                           </DropdownMenuRadioGroup>

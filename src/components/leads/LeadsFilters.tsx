@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Search, X, Filter } from 'lucide-react';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 
 interface LeadsFiltersProps {
   search: string;
@@ -22,6 +23,8 @@ export function LeadsFilters({
   statusFilter,
   onStatusFilterChange,
 }: LeadsFiltersProps) {
+  const { statuses } = useLeadStatuses();
+
   const clearFilters = () => {
     onSearchChange('');
     onStatusFilterChange('all');
@@ -48,13 +51,11 @@ export function LeadsFilters({
         </SelectTrigger>
         <SelectContent className="bg-popover border-border">
           <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="new">New</SelectItem>
-          <SelectItem value="interested">Interested</SelectItem>
-          <SelectItem value="not_interested">Not Interested</SelectItem>
-          <SelectItem value="follow_up">Follow Up</SelectItem>
-          <SelectItem value="rnr">RNR</SelectItem>
-          <SelectItem value="dnd">DND</SelectItem>
-          <SelectItem value="paid">Paid</SelectItem>
+          {statuses.map((status) => (
+            <SelectItem key={status.id} value={status.value}>
+              {status.label}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
 

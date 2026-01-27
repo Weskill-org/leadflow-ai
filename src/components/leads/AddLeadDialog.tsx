@@ -33,13 +33,14 @@ import { useCompany } from '@/hooks/useCompany';
 import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 
 const formSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     email: z.string().email('Invalid email address').optional().or(z.literal('')),
     phone: z.string().min(10, 'Phone number must be at least 10 digits').optional().or(z.literal('')),
     college: z.string().optional(),
-    status: z.enum(Constants.public.Enums.lead_status as unknown as [string, ...string[]]),
+    status: z.string(),
     lead_source: z.string().optional(),
 });
 
@@ -48,6 +49,7 @@ export function AddLeadDialog() {
     const { user } = useAuth();
     const { company } = useCompany();
     const createLead = useCreateLead();
+    const { statuses } = useLeadStatuses();
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -183,9 +185,9 @@ export function AddLeadDialog() {
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {Constants.public.Enums.lead_status.map((status) => (
-                                                <SelectItem key={status} value={status} className="capitalize" disabled={status === 'paid'}>
-                                                    {status.replace('_', ' ')}
+                                            {statuses.map((status) => (
+                                                <SelectItem key={status.id} value={status.value} className="capitalize">
+                                                    {status.label}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>

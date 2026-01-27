@@ -24,6 +24,7 @@ export interface MultiSelectFilterProps {
         label: string
         value: string
         icon?: React.ComponentType<{ className?: string }>
+        group?: string
     }[]
     selectedValues: Set<string>
     onSelectionChange: (selectedValues: Set<string>) => void
@@ -81,40 +82,49 @@ export function MultiSelectFilter({
                     <CommandInput placeholder={title} />
                     <CommandList>
                         <CommandEmpty>No results found.</CommandEmpty>
-                        <CommandGroup>
-                            {options.map((option) => {
-                                const isSelected = selectedValues.has(option.value)
-                                return (
-                                    <CommandItem
-                                        key={option.value}
-                                        onSelect={() => {
-                                            const newSelectedValues = new Set(selectedValues)
-                                            if (isSelected) {
-                                                newSelectedValues.delete(option.value)
-                                            } else {
-                                                newSelectedValues.add(option.value)
-                                            }
-                                            onSelectionChange(newSelectedValues)
-                                        }}
-                                    >
-                                        <div
-                                            className={cn(
-                                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                                isSelected
-                                                    ? "bg-primary text-primary-foreground"
-                                                    : "opacity-50 [&_svg]:invisible"
-                                            )}
+                        {Array.from(
+                            options.reduce((acc, option) => {
+                                const group = option.group || 'Others';
+                                if (!acc.has(group)) acc.set(group, []);
+                                acc.get(group)?.push(option);
+                                return acc;
+                            }, new Map<string, typeof options>())
+                        ).map(([group, groupOptions]) => (
+                            <CommandGroup key={group} heading={options.some(o => o.group) ? group.replace('_', ' ').toUpperCase() : undefined}>
+                                {groupOptions.map((option) => {
+                                    const isSelected = selectedValues.has(option.value)
+                                    return (
+                                        <CommandItem
+                                            key={option.value}
+                                            onSelect={() => {
+                                                const newSelectedValues = new Set(selectedValues)
+                                                if (isSelected) {
+                                                    newSelectedValues.delete(option.value)
+                                                } else {
+                                                    newSelectedValues.add(option.value)
+                                                }
+                                                onSelectionChange(newSelectedValues)
+                                            }}
                                         >
-                                            <Check className={cn("h-4 w-4")} />
-                                        </div>
-                                        {option.icon && (
-                                            <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                                        )}
-                                        <span>{option.label}</span>
-                                    </CommandItem>
-                                )
-                            })}
-                        </CommandGroup>
+                                            <div
+                                                className={cn(
+                                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                                    isSelected
+                                                        ? "bg-primary text-primary-foreground"
+                                                        : "opacity-50 [&_svg]:invisible"
+                                                )}
+                                            >
+                                                <Check className={cn("h-4 w-4")} />
+                                            </div>
+                                            {option.icon && (
+                                                <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                                            )}
+                                            <span>{option.label}</span>
+                                        </CommandItem>
+                                    )
+                                })}
+                            </CommandGroup>
+                        ))}
                         {selectedValues.size > 0 && (
                             <>
                                 <CommandSeparator />
