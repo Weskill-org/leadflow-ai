@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface RegisterRequest {
   companyName: string;
+  industry: string;
   adminEmail: string;
   adminPassword: string;
   adminFullName: string;
@@ -34,11 +35,14 @@ serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
     const body: RegisterRequest = await req.json()
-    const { companyName, adminEmail, adminPassword, adminFullName } = body
+    const { companyName, industry, adminEmail, adminPassword, adminFullName } = body
 
     // Validation
     if (!companyName || companyName.trim().length < 2) {
       throw new Error('Company name must be at least 2 characters')
+    }
+    if (!industry || industry.trim().length === 0) {
+      throw new Error('Industry is required')
     }
     if (!adminEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) {
       throw new Error('Please enter a valid email address')
@@ -95,6 +99,8 @@ serve(async (req) => {
       .insert({
         admin_id: userId,
         name: companyName.trim(),
+        industry: industry,
+        industry_locked: true,
         slug: slug,
         total_licenses: 1,
         used_licenses: 1,

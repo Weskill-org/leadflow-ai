@@ -13,7 +13,7 @@ type LeadStatus = Database['public']['Enums']['lead_status'];
 
 interface UseLeadsOptions {
   search?: string;
-  statusFilter?: string;
+  statusFilter?: string | string[];
   ownerFilter?: string[];
   productFilter?: string[];
   page?: number;
@@ -61,8 +61,14 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
 
       }
 
-      if (statusFilter && statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as LeadStatus);
+      if (statusFilter) {
+        if (Array.isArray(statusFilter)) {
+          if (statusFilter.length > 0) {
+            query = query.in('status', statusFilter);
+          }
+        } else if (statusFilter !== 'all') {
+          query = query.eq('status', statusFilter as LeadStatus);
+        }
       }
 
       if (ownerFilter && ownerFilter.length > 0) {

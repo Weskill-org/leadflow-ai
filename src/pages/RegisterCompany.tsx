@@ -5,12 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Building2, CheckCircle } from 'lucide-react';
 import { z } from 'zod';
+import { INDUSTRIES } from '@/config/industries';
 
 const registerSchema = z.object({
   companyName: z.string().min(2, 'Company name must be at least 2 characters').max(100),
+  industry: z.string().min(1, 'Please select an industry'),
   adminEmail: z.string().email('Please enter a valid email'),
   adminPassword: z.string().min(6, 'Password must be at least 6 characters'),
   adminFullName: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -18,6 +21,7 @@ const registerSchema = z.object({
 
 export default function RegisterCompany() {
   const [companyName, setCompanyName] = useState('');
+  const [industry, setIndustry] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminFullName, setAdminFullName] = useState('');
@@ -31,7 +35,7 @@ export default function RegisterCompany() {
   const validateForm = () => {
     setErrors({});
     try {
-      registerSchema.parse({ companyName, adminEmail, adminPassword, adminFullName });
+      registerSchema.parse({ companyName, industry, adminEmail, adminPassword, adminFullName });
       return true;
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -58,6 +62,7 @@ export default function RegisterCompany() {
       const { data, error } = await supabase.functions.invoke('register-company', {
         body: {
           companyName,
+          industry,
           adminEmail,
           adminPassword,
           adminFullName
@@ -152,6 +157,29 @@ export default function RegisterCompany() {
                 />
                 {errors.companyName && (
                   <p className="text-sm text-destructive">{errors.companyName}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="industry">Industry</Label>
+                <Select
+                  value={industry}
+                  onValueChange={setIndustry}
+                  disabled={loading}
+                >
+                  <SelectTrigger id="industry" className={errors.industry ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Select industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDUSTRIES.map((ind) => (
+                      <SelectItem key={ind.id} value={ind.id}>
+                        {ind.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.industry && (
+                  <p className="text-sm text-destructive">{errors.industry}</p>
                 )}
               </div>
 

@@ -13,6 +13,7 @@ interface Company {
   is_active: boolean;
   custom_leads_table?: string | null;
   admin_id: string;
+  industry: string | null;
 }
 
 export function useCompany() {

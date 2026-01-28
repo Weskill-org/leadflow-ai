@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -35,7 +35,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 export default function GeneralSettingsTab() {
   const { company, refetch, isCompanyAdmin } = useCompany();
   const { toast } = useToast();
-  
+
   const [selectedIndustry, setSelectedIndustry] = useState<IndustryType | null>(null);
   const [saving, setSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -53,12 +53,12 @@ export default function GeneralSettingsTab() {
 
   const handleSetIndustry = async () => {
     if (!selectedIndustry || !company) return;
-    
+
     setSaving(true);
     try {
       const { error } = await supabase
         .from('companies')
-        .update({ 
+        .update({
           industry: selectedIndustry,
           industry_locked: true,
           updated_at: new Date().toISOString()
@@ -71,7 +71,7 @@ export default function GeneralSettingsTab() {
         title: "Industry Set Successfully",
         description: `Your CRM is now configured for ${getIndustryById(selectedIndustry)?.name}. This setting is now locked.`,
       });
-      
+
       refetch();
       setShowConfirmDialog(false);
     } catch (error: any) {
@@ -85,14 +85,35 @@ export default function GeneralSettingsTab() {
     }
   };
 
-  const handleRequestChange = () => {
-    // For now, just show an alert about the fee
-    // In production, this would integrate with payment gateway
-    toast({
-      title: "Industry Change Request",
-      description: `To change your CRM industry, please contact support. A fee of ₹${INDUSTRY_CHANGE_FEE.toLocaleString('en-IN')} applies.`,
-    });
-    setShowChangeDialog(false);
+  const handleRequestChange = async () => {
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('change-industry');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Industry Change Request Accepted",
+        description: `Fee deducted. You can now select a new industry.`,
+      });
+
+      refetch();
+      setShowChangeDialog(false);
+    } catch (error: any) {
+      toast({
+        title: "Request Failed",
+        description: error.message || "Failed to process request",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!isCompanyAdmin) {
@@ -115,7 +136,7 @@ export default function GeneralSettingsTab() {
                 )}
               </CardTitle>
               <CardDescription>
-                {isLocked 
+                {isLocked
                   ? "Your CRM industry is set. To change it, a fee of ₹10,000 applies."
                   : "Select your business industry. This is a one-time setup that customizes your CRM layout and features."
                 }
@@ -183,15 +204,15 @@ export default function GeneralSettingsTab() {
                 {INDUSTRIES.map((industry) => {
                   const IconComponent = iconMap[industry.icon];
                   const isSelected = selectedIndustry === industry.id;
-                  
+
                   return (
                     <Label
                       key={industry.id}
                       htmlFor={industry.id}
                       className={`
                         relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all
-                        ${isSelected 
-                          ? 'border-primary bg-primary/5 shadow-lg' 
+                        ${isSelected
+                          ? 'border-primary bg-primary/5 shadow-lg'
                           : 'border-border hover:border-primary/50 hover:bg-accent/50'
                         }
                       `}
@@ -231,7 +252,7 @@ export default function GeneralSettingsTab() {
                 <p className="text-sm text-muted-foreground">
                   ⚠️ This selection cannot be changed for free after confirmation.
                 </p>
-                <Button 
+                <Button
                   onClick={() => setShowConfirmDialog(true)}
                   disabled={!selectedIndustry}
                   className="gradient-primary"

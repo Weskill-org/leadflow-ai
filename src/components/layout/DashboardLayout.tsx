@@ -20,12 +20,14 @@ const navItems = [{
   icon: Users,
   label: 'All Leads',
   path: '/dashboard/leads'
-}, {
-  icon: Building2,
-  label: 'Real Estate Leads',
-  path: '/dashboard/real-estate-leads',
-  industryOnly: 'real_estate'
-}, {
+},
+// {
+//   icon: Building2,
+//   label: 'Real Estate Leads',
+//   path: '/dashboard/real-estate-leads',
+//   industryOnly: 'real_estate'
+// }, 
+{
   icon: UserCheck,
   label: 'Interested',
   path: '/dashboard/interested'
@@ -69,7 +71,7 @@ const navItems = [{
 }, {
   icon: Building2,
   label: 'Properties',
-  path: '/dashboard/products',
+  path: '/dashboard/properties',
   industryOnly: 'real_estate'
 }, {
   icon: Users,
@@ -124,7 +126,7 @@ export default function DashboardLayout({
     if ((item as any).industryExclude && (item as any).industryExclude === companyIndustry) {
       return false;
     }
-    
+
     if (item.label === 'Integrations') {
       return role === 'company' || role === 'company_subadmin';
     }

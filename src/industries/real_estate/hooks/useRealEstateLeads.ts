@@ -5,7 +5,7 @@ import type { RealEstateLead } from '../components/RealEstateLeadsTable';
 
 interface UseRealEstateLeadsOptions {
   search?: string;
-  statusFilter?: string;
+  statusFilter?: string | string[];
   ownerFilter?: string[];
   propertyTypeFilter?: string[];
   page?: number;
@@ -51,13 +51,19 @@ export function useRealEstateLeads({
         .order('created_at', { ascending: false });
 
       if (statusFilter && statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        if (Array.isArray(statusFilter)) {
+          if (statusFilter.length > 0) {
+            query = query.in('status', statusFilter);
+          }
+        } else {
+          query = query.eq('status', statusFilter);
+        }
       }
 
       if (ownerFilter && ownerFilter.length > 0) {
         // Filter by any of the owner fields
         query = query.or(
-          ownerFilter.map(id => 
+          ownerFilter.map(id =>
             `pre_sales_owner_id.eq.${id},sales_owner_id.eq.${id},post_sales_owner_id.eq.${id}`
           ).join(',')
         );
@@ -84,9 +90,9 @@ export function useRealEstateLeads({
         throw error;
       }
 
-      return { 
-        leads: (data as unknown as RealEstateLead[]) || [], 
-        count: count || 0 
+      return {
+        leads: (data as unknown as RealEstateLead[]) || [],
+        count: count || 0
       };
     },
     enabled: !companyLoading && !!company?.id,

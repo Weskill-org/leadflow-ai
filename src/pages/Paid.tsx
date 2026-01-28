@@ -5,32 +5,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import {
-    Search, Filter, MoreHorizontal, Phone, Mail, Download
-} from 'lucide-react';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { useLeads, useUpdateLead, useDeleteLead } from '@/hooks/useLeads';
-import { useProducts } from '@/hooks/useProducts';
-import { useAuth } from '@/hooks/useAuth';
-import { useUserRole, isRoleAllowedToMarkPaid } from '@/hooks/useUserRole';
-import { Constants, Tables } from '@/integrations/supabase/types';
-import { format } from 'date-fns';
-import { toast } from 'sonner';
-import { EditLeadDialog } from '@/components/leads/EditLeadDialog';
-import { LeadDetailsDialog } from '@/components/leads/LeadDetailsDialog';
+import { Search, Filter, Download } from 'lucide-react';
+import { useLeads } from '@/hooks/useLeads';
+import { useCompany } from '@/hooks/useCompany';
+import { Tables } from '@/integrations/supabase/types';
+import { LeadsTable } from '@/components/leads/LeadsTable';
+import { RealEstateLeadsTable } from '@/industries/real_estate/components/RealEstateLeadsTable';
+import { useRealEstateLeads } from '@/industries/real_estate/hooks/useRealEstateLeads';
 
 type Lead = Tables<'leads'> & {
     sales_owner?: {
@@ -38,53 +19,41 @@ type Lead = Tables<'leads'> & {
     } | null;
 };
 
-const statusColors: Record<string, string> = {
-    'new': 'bg-blue-500/10 text-blue-500',
-    'interested': 'bg-yellow-500/10 text-yellow-500',
-    'paid': 'bg-green-500/10 text-green-500',
-    'follow_up': 'bg-purple-500/10 text-purple-500',
-    'dnd': 'bg-red-500/10 text-red-500',
-    'not_interested': 'bg-gray-500/10 text-gray-500',
-    'rnr': 'bg-orange-500/10 text-orange-500',
-};
-
 export default function Paid() {
+    const { company } = useCompany();
     const [searchQuery, setSearchQuery] = useState('');
-    // Filter for 'paid' status
-    const { data: leadsData, isLoading } = useLeads({ search: searchQuery, statusFilter: 'paid' });
-    const leads = (leadsData?.leads || []) as Lead[];
-    const { products } = useProducts();
-    const updateLead = useUpdateLead();
-    const deleteLead = useDeleteLead();
-    const { user } = useAuth();
-    const { data: userRole } = useUserRole();
-    const [editingLead, setEditingLead] = useState<Lead | null>(null);
-    const [viewingLead, setViewingLead] = useState<Lead | null>(null);
+    const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
-            return;
-        }
+    const isRealEstate = company?.industry === 'real_estate';
 
-        try {
-            await deleteLead.mutateAsync(id);
-            toast.success('Lead deleted successfully');
-        } catch (error) {
-            toast.error('Failed to delete lead');
-        }
+    // Fetch confirmed 'paid' statuses
+    const { data: paidStatuses } = useQuery({
+        queryKey: ['paid-statuses', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return [];
+            const { data } = await supabase
+                .from('company_lead_statuses' as any)
+                .select('value')
+                .eq('company_id', company.id)
+                .eq('category', 'paid');
+
+            const statuses = data?.map((s: any) => s.value) || [];
+            return statuses.length > 0 ? statuses : ['paid'];
+        },
+        enabled: !!company?.id
+    });
+
+    const statusFilter = paidStatuses && paidStatuses.length > 0 ? paidStatuses : ['paid'];
+
+    const hookOptions = {
+        search: searchQuery,
+        statusFilter: statusFilter
     };
 
-    const handleStatusChange = async (leadId: string, newStatus: string) => {
-        try {
-            await updateLead.mutateAsync({
-                id: leadId,
-                status: newStatus as any
-            });
-            toast.success('Status updated successfully');
-        } catch (error) {
-            toast.error('Failed to update status');
-        }
-    };
+    const genericLeadsQuery = useLeads(hookOptions);
+    const realEstateLeadsQuery = useRealEstateLeads(hookOptions);
+
+    const isLoading = isRealEstate ? realEstateLeadsQuery.isLoading : genericLeadsQuery.isLoading;
 
     const { data: owners } = useQuery({
         queryKey: ['leadsFilterOptionsOwners'],
@@ -96,8 +65,6 @@ export default function Paid() {
             return data?.map(o => ({ label: o.full_name || 'Unknown', value: o.id })) || [];
         }
     });
-
-
 
     if (isLoading) {
         return (
@@ -143,133 +110,27 @@ export default function Paid() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Phone Number</TableHead>
-                                    <TableHead>Owner</TableHead>
-                                    <TableHead>Product</TableHead>
-                                    <TableHead>Payment Link</TableHead>
-                                    <TableHead>Revenue Received</TableHead>
-                                    <TableHead>Revenue Projected</TableHead>
-                                    <TableHead>Revenue Pending</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {leads?.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                                            No paid leads found
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    leads?.map((lead) => {
-                                        const revenueReceived = lead.revenue_received || 0;
-                                        const revenueProjected = lead.revenue_projected || 0;
-                                        const revenuePending = revenueProjected - revenueReceived;
-
-                                        return (
-                                            <TableRow key={lead.id}>
-                                                <TableCell className="font-medium">{lead.name}</TableCell>
-                                                <TableCell>
-                                                    {lead.email && (
-                                                        <span className="flex items-center gap-1 text-muted-foreground">
-                                                            <Mail className="h-3 w-3" /> {lead.email}
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {lead.phone && (
-                                                        <span className="flex items-center gap-1 text-muted-foreground">
-                                                            <Phone className="h-3 w-3" /> {lead.phone}
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {lead.sales_owner?.full_name || owners?.find(o => o.value === lead.sales_owner_id)?.label || 'Unknown'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium text-sm">{(lead as any).product_category || '-'}</span>
-                                                        {lead.product_purchased && (
-                                                            <span className="text-xs text-muted-foreground">{lead.product_purchased}</span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {lead.payment_link ? (
-                                                        <Button
-                                                            variant={lead.status === 'paid' ? 'default' : 'outline'}
-                                                            size="sm"
-                                                            className={`h-8 ${lead.status === 'paid' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
-                                                            onClick={async () => {
-                                                                try {
-                                                                    await navigator.clipboard.writeText(lead.payment_link!);
-                                                                    toast.success('Link copied to clipboard');
-                                                                } catch (err) {
-                                                                    console.error('Failed to copy:', err);
-                                                                    toast.error('Failed to copy link');
-                                                                }
-                                                            }}
-                                                        >
-                                                            {lead.status === 'paid' ? 'Paid' : 'Copy Link'}
-                                                        </Button>
-                                                    ) : (
-                                                        <span className="text-muted-foreground text-sm">-</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(revenueReceived)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(revenueProjected)}
-                                                </TableCell>
-                                                <TableCell className={revenuePending > 0 ? 'text-red-500 font-medium' : 'text-green-500 font-medium'}>
-                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(revenuePending)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => setViewingLead(lead as Lead)}>View Details</DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setEditingLead(lead as Lead)}>Edit Lead</DropdownMenuItem>
-                                                            <DropdownMenuItem
-                                                                className="text-destructive"
-                                                                onClick={() => handleDelete(lead.id)}
-                                                            >
-                                                                Delete
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        )
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
+                        {isRealEstate ? (
+                            <RealEstateLeadsTable
+                                leads={realEstateLeadsQuery.data?.leads || []}
+                                loading={realEstateLeadsQuery.isLoading}
+                                selectedLeads={selectedLeads}
+                                onSelectionChange={setSelectedLeads}
+                                owners={owners}
+                                onRefetch={realEstateLeadsQuery.refetch}
+                            />
+                        ) : (
+                            <LeadsTable
+                                leads={(genericLeadsQuery.data?.leads || []) as Lead[]}
+                                loading={genericLeadsQuery.isLoading}
+                                selectedLeads={selectedLeads}
+                                onSelectionChange={setSelectedLeads}
+                                owners={owners}
+                            />
+                        )}
                     </CardContent>
                 </Card>
             </div>
-            <EditLeadDialog
-                open={!!editingLead}
-                onOpenChange={(open) => !open && setEditingLead(null)}
-                lead={editingLead}
-            />
-
-            <LeadDetailsDialog
-                open={!!viewingLead}
-                onOpenChange={(open) => !open && setViewingLead(null)}
-                lead={viewingLead}
-                owners={owners}
-            />
         </DashboardLayout>
     );
 }
