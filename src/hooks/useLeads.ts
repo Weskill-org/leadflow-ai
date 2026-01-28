@@ -51,7 +51,7 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
 
       // CRITICAL: Enforce company isolation for shared table
       // Custom tables are already isolated (contain only one company's data)
-      if (tableName === 'leads') {
+      if (tableName === 'leads' || tableName === 'leads_real_estate') {
         if (!companyId) {
           console.warn('[useLeads] Security Guard: companyId missing for shared table. Aborting query to prevent data leakage.');
           return { leads: [], count: 0 };
